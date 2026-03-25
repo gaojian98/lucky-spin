@@ -2,37 +2,59 @@
 <html>
 <head>
   <title>幸运转盘</title>
+  <style>
+    body { text-align:center; font-family: Arial; }
+    button { padding:10px 20px; margin:10px; font-size:16px; }
+  </style>
 </head>
 <body>
-  <h1>🎉 幸运转盘</h1>
 
-  <button onclick="register()">注册</button>
-  <button onclick="spin()">抽奖</button>
+<h1>🎉 幸运转盘</h1>
 
-  <p id="result"></p>
+<p>积分：<span id="points">0</span></p>
+<p>现金：<span id="cash">0</span></p>
+
+<button onclick="register()">注册</button>
+<button onclick="spin()">抽奖</button>
+
+<h2 id="result"></h2>
 
 <script>
-const API = "https://你的railway地址";
-
+const API = "https://你的真实地址";
 let userId = "user1";
+
+function updateUI(data){
+  document.getElementById("points").innerText = data.points;
+  document.getElementById("cash").innerText = data.cash;
+}
 
 function register(){
   fetch(API + "/register", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
     body: JSON.stringify({userId})
-  }).then(r=>r.json()).then(d=>{
-    document.getElementById("result").innerText = JSON.stringify(d);
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    updateUI(d);
+    document.getElementById("result").innerText = "注册成功！送100000积分";
   });
 }
 
 function spin(){
   fetch(API + "/spin", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
     body: JSON.stringify({userId})
-  }).then(r=>r.json()).then(d=>{
-    document.getElementById("result").innerText = JSON.stringify(d);
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    if(d.error){
+      document.getElementById("result").innerText = d.error;
+    }else{
+      updateUI(d.user);
+      document.getElementById("result").innerText = "中奖：" + JSON.stringify(d.reward);
+    }
   });
 }
 </script>
