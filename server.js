@@ -8,15 +8,28 @@ app.use(express.static(__dirname));
 let users = {};
 
 // 注册
+let users = {};
+
 app.post("/register", (req, res) => {
   const { userId } = req.body;
+
+  if (!userId) {
+    return res.json({ error: "no userId" });
+  }
+
+  // 如果用户不存在就创建
   if (!users[userId]) {
     users[userId] = {
       points: 100000,
       cash: 0
     };
   }
-  res.json(users[userId]);
+
+  // 👇 一定要返回这个结构
+  res.json({
+    points: users[userId].points,
+    cash: users[userId].cash
+  });
 });
 
 // 查询用户
