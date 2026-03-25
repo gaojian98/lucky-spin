@@ -36,10 +36,13 @@ app.post("/spin", (req, res) => {
   user.points -= 50000;
 
   const rewards = [
-    { type: "points", value: 10000 },
-    { type: "points", value: 20000 },
-    { type: "cash", value: 10000 },
-    { type: "none", value: 0 }
+     { type: "points", value: 10000 }, // 常见
+  { type: "points", value: 10000 },
+  { type: "points", value: 20000 },
+  { type: "none", value: 0 },
+  { type: "none", value: 0 },
+  { type: "none", value: 0 },
+  { type: "cash", value: 10000 } // 很低概率
   ];
 
   let reward = rewards[Math.floor(Math.random() * rewards.length)];
