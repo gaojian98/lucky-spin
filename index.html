@@ -7,7 +7,8 @@
     button { padding:10px 20px; margin:10px; font-size:16px; }
   </style>
 </head>
-<<button onclick="recharge()">充值</button>>
+
+<body>
 
 <h1>🎉 幸运转盘</h1>
 
@@ -15,12 +16,13 @@
 <p>现金：<span id="cash">0</span></p>
 
 <button onclick="register()">注册</button>
-
 <button onclick="spin()">抽奖</button>
 <button onclick="recharge()">充值</button>
+
 <h2 id="result"></h2>
 
-const API = "https://你的真实地址";
+<script>
+const API = "https://你的真实地址"; // ⚠️ 这里换成你的Railway地址
 let userId = "user1";
 
 function updateUI(data){
@@ -57,6 +59,7 @@ function spin(){
     }
   });
 }
+
 function recharge(){
   alert("请联系客服充值：Zalo / Telegram");
 }
