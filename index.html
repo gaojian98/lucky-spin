@@ -124,8 +124,22 @@ function spin(){
       document.getElementById("result").innerText = d.error;
     }else{
       updateUI(d.user);
-      document.getElementById("result").innerText =
-        "🎉 中奖：" + JSON.stringify(d.reward);
+     let text = "";
+
+if(d.reward.type === "points"){
+  text = "🎉 恭喜获得 " + d.reward.value + " 积分";
+}
+else if(d.reward.type === "cash"){
+  text = "💰 恭喜获得 " + d.reward.value + " 越南盾";
+}
+else if(d.reward.type === "none"){
+  text = "😢 很遗憾未中奖，再试一次！";
+}
+else{
+  text = "🎁 获得奖品：" + d.reward.value;
+}
+
+document.getElementById("result").innerText = text;
     }
   })
   .catch(()=>{
