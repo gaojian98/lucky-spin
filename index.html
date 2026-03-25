@@ -28,7 +28,7 @@
     }
   </style>
 </head>
-
+<input id="username" placeholder="请输入用户名">
 <body>
 
 <h1>🎉 幸运转盘</h1>
@@ -63,7 +63,27 @@
 
 <script>
 const API = "https://lucky-spin-production.up.railway.app"; // ⚠️必须替换
-let userId = "user_" + Math.floor(Math.random()*100000);
+let userId = "";
+
+function register(){
+  userId = document.getElementById("username").value;
+
+  if(!userId){
+    alert("请输入用户名");
+    return;
+  }
+
+  fetch(API + "/register", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({userId})
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    updateUI(d);
+    document.getElementById("result").innerText = "注册成功！";
+  });
+}
 
 // 更新UI
 function updateUI(data){
