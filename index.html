@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>幸运转盘</title>
+</head>
+<body>
+  <h1>🎉 幸运转盘</h1>
+
+  <button onclick="register()">注册</button>
+  <button onclick="spin()">抽奖</button>
+
+  <p id="result"></p>
+
+<script>
+const API = "https://你的railway地址";
+
+let userId = "user1";
+
+function register(){
+  fetch(API + "/register", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({userId})
+  }).then(r=>r.json()).then(d=>{
+    document.getElementById("result").innerText = JSON.stringify(d);
+  });
+}
+
+function spin(){
+  fetch(API + "/spin", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({userId})
+  }).then(r=>r.json()).then(d=>{
+    document.getElementById("result").innerText = JSON.stringify(d);
+  });
+}
+</script>
+
+</body>
+</html>
