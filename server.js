@@ -40,32 +40,39 @@ app.get("/user/:id", (req, res) => {
 // 抽奖
 app.post("/spin", (req, res) => {
   const { userId } = req.body;
-  let user = users[userId];
 
-  if (!user || user.points < 50000) {
+  if (!users[userId]) {
+    return res.json({ error: "请先注册" });
+  }
+
+  if (users[userId].points < 50000) {
     return res.json({ error: "积分不足" });
   }
 
-  user.points -= 50000;
+  users[userId].points -= 50000;
 
   const rewards = [
-     { type: "points", value: 10000 }, // 常见
-  { type: "points", value: 10000 },
-  { type: "points", value: 20000 },
-  { type: "none", value: 0 },
-  { type: "none", value: 0 },
-  { type: "none", value: 0 },
-  { type: "cash", value: 10000 } // 很低概率
+    { type: "points", value: 10000 },
+    { type: "points", value: 20000 },
+    { type: "none", value: 0 },
+    { type: "cash", value: 10000 }
   ];
 
-  let reward = rewards[Math.floor(Math.random() * rewards.length)];
+  const reward = rewards[Math.floor(Math.random() * rewards.length)];
 
-  if (reward.type === "points") user.points += reward.value;
-  if (reward.type === "cash") user.cash += reward.value;
+  if (reward.type === "points") {
+    users[userId].points += reward.value;
+  }
 
-  res.json({ reward, user });
+  if (reward.type === "cash") {
+    users[userId].cash += reward.value;
+  }
+
+  res.json({
+    user: users[userId],
+    reward: reward
+  });
 });
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("server running");
