@@ -3,21 +3,25 @@
 <head>
   <title>幸运转盘</title>
   <style>
-    body { text-align:center; font-family: Arial; }
-
-  <div id="wheel" style="
+#wheel{
   width:200px;
   height:200px;
   border-radius:50%;
   border:10px solid #ff9800;
   margin:20px auto;
-  transition: transform 3s ease-out;
+
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:30px;
-">
-</div>
+
+  font-size:40px;
+
+  /* 🎯 关键动画 */
+  transition: transform 3s cubic-bezier(0.33, 1, 0.68, 1);
+
+  background: #fff8e1;
+}
+</style>
 
     button { padding:10px 20px; margin:10px; font-size:16px; }
 
