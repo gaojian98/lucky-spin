@@ -72,8 +72,8 @@ const API = "https://lucky-spin-production.up.railway.app"; // ⚠️必须替�
 function register(){
   let userId = document.getElementById("username").value;
 
-  if(!userId){
-    alert("请输入用户名");
+   if(!userId){
+    document.getElementById("result").innerText = "❗请输入用户名";
     return;
   }
 
