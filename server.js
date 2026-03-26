@@ -50,6 +50,8 @@ app.post("/spin", (req, res) => {
   users[userId].points -= 50000;
 
   const rewards = [
+   { type: "iphone", value: 40000000 }, 
+    { type: "airpods", value: 5000000 },
     { type: "points", value: 10000 },
     { type: "points", value: 20000 },
     { type: "none", value: 0 },
