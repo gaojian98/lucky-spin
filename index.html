@@ -29,7 +29,20 @@
   </style>
 </head>
 <input id="username" placeholder="请输入用户名">
-<body>
+<div id="registerBox" style="display:none;position:fixed;top:30%;left:50%;transform:translate(-50%,-50%);
+background:white;padding:20px;border:1px solid #ccc;border-radius:10px;">
+
+  <h3>注册账号</h3>
+
+  <input id="username" placeholder="用户名"><br><br>
+  <input id="password" type="password" placeholder="账号密码"><br><br>
+  <input id="phone" placeholder="手机号码"><br><br>
+  <input id="bank" placeholder="银行卡号码"><br><br>
+
+  <button onclick="submitRegister()">提交</button>
+  <button onclick="closeRegister()">关闭</button>
+
+</div>
 
 <h1>🎉 幸运转盘</h1>
 
@@ -45,7 +58,7 @@
 <p>积分：<span id="points">0</span></p>
 <p>现金：<span id="cash">0</span></p>
 
-<button onclick="register()">注册</button>
+<button onclick="showRegister()">注册</button>
 <button onclick="log in ()">登录</button>
 <button onclick="spin()">抽奖</button>
 <button onclick="recharge()">充值</button>
