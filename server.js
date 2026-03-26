@@ -58,17 +58,24 @@ app.post("/spin", (req, res) => {
 
   const reward = rewards[Math.floor(Math.random() * rewards.length)];
 
-  if (reward.type === "points") {
-    users[userId].points += reward.value;
-  }
+let message = "";
 
-  if (reward.type === "cash") {
-    users[userId].cash += reward.value;
-  }
+if (reward.type === "points") {
+  users[userId].points += reward.value;
+  message = "获得积分：" + reward.value;
+}
 
+if (reward.type === "cash") {
+  users[userId].cash += reward.value;
+  message = "获得现金：" + reward.value + "越南盾";
+}
+
+if (reward.type === "none") {
+  message = "谢谢参与";
+}
   res.json({
     user: users[userId],
-    reward: reward
+    reward: message
   });
 });
 const PORT = process.env.PORT || 3000;
