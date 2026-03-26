@@ -268,7 +268,53 @@ MoMo / 银行 / Zalo
 联系客服完成充值
 `);
 }
-</script>
+<script>
+let currentDeg = 0; // ⭐ 必须全局变量
 
+function spin(){
+
+  const wheel = document.getElementById("wheel");
+
+  // 🎯 每次在原基础上增加角度（关键）
+  const extra = 1800 + Math.floor(Math.random() * 1800);
+  currentDeg += extra;
+
+  // 🎡 开始旋转
+  wheel.style.transform = "rotate(" + currentDeg + "deg)";
+
+  // ⏱️ 动画结束后再请求
+  setTimeout(() => {
+
+    fetch(API + "/spin", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({userId})
+    })
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.error){
+        document.getElementById("result").innerText = d.error;
+      }else{
+        updateUI(d.user);
+
+        let text = "";
+
+        if(d.reward.type === "points"){
+          text = "🎉 获得 " + d.reward.value + " 积分";
+        }
+        else if(d.reward.type === "cash"){
+          text = "💰 获得 " + d.reward.value + " 越南盾";
+        }
+        else{
+          text = "😢 未中奖";
+        }
+
+        document.getElementById("result").innerText = text;
+      }
+    });
+
+  }, 3000);
+}
+</script>
 </body>
 </html>
