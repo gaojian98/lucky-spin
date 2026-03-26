@@ -16,15 +16,17 @@ app.post("/register", (req, res) => {
     return res.json({ error: "信息不完整" });
   }
 
-  if (!users[userId]) {
-    users[userId] = {
-      password,
-      phone,
-      bank,
-      points: 100000,
-      cash: 0
-    };
-  }
+  if (users[userId]) {
+  return res.json({ error: "用户已存在" });
+}
+
+users[userId] = {
+  password,
+  phone,
+  bank,
+  points: 100000,
+  cash: 0
+};
 
   res.json(users[userId]);
 });
