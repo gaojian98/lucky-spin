@@ -5,16 +5,19 @@
   <style>
     body { text-align:center; font-family: Arial; }
 
-    #wheel {
-      width:200px;
-      height:200px;
-      border:10px solid #f90;
-      border-radius:50%;
-      margin:20px auto;
-      line-height:200px;
-      font-size:20px;
-      transition: transform 3s ease;
-    }
+  <div id="wheel" style="
+  width:200px;
+  height:200px;
+  border-radius:50%;
+  border:10px solid #ff9800;
+  margin:20px auto;
+  transition: transform 3s ease-out;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:30px;
+">
+</div>
 
     button { padding:10px 20px; margin:10px; font-size:16px; }
 
@@ -47,7 +50,7 @@ background:white;padding:20px;border:1px solid #ccc;border-radius:10px;">
 <h1>🎉 幸运转盘</h1>
 
 <div style="position:relative;width:300px;height:300px;border:10px solid orange;border-radius:50%;margin:auto;">
-
+<div style="text-align:center;font-size:30px;">🔻</div>
   <!-- 🎯 中间指针 -->
   <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:30px;">
     🎯
@@ -182,7 +185,36 @@ function submitRegister(){
 
 // 抽奖
 function spin(){
-   let userId = document.getElementById("username").value;
+   const wheel = document.getElementById("wheel");
+
+  // 🎯 随机角度（转5~10圈）
+  const deg = 1800 + Math.floor(Math.random() * 1800);
+
+  // 🎡 开始转动
+  wheel.style.transform = "rotate(" + deg + "deg)";
+
+  // ⏱️ 等转完再请求接口（3秒）
+  setTimeout(() => {
+
+    fetch(API + "/spin", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({userId})
+    })
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.error){
+        document.getElementById("result").innerText = d.error;
+      }else{
+        updateUI(d.user);
+
+        // 👉 如果你用的是字符串返回
+        document.getElementById("result").innerText = d.reward;
+      }
+    });
+
+  }, 3000);
+};
 
   if(!userId){
     document.getElementById("result").innerText = "❗请先输入用户名";
