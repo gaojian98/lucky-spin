@@ -557,7 +557,7 @@
     }
 
     // ==================== 初始化 ====================
-    window.addEventListener("keypress", (e) => {
+    window.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         const registerModal = document.getElementById("registerModal");
         if (registerModal.classList.contains("active")) {

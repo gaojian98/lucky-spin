@@ -6,6 +6,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
+// ==================== 配置 ====================
+const SPIN_COST = 30000;
+
 // ==================== 用户数据库 ====================
 let users = {};
 
@@ -101,7 +104,6 @@ app.post("/spin", (req, res) => {
     return res.json({ error: "请先登录" });
   }
 
-  const SPIN_COST = 30000;
   if (users[userId].points < SPIN_COST) {
     return res.json({
       error: `积分不足，需要 ${SPIN_COST.toLocaleString()} 积分，当前只有 ${users[userId].points.toLocaleString()} 积分`
