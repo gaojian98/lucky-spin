@@ -92,7 +92,13 @@ function register(){
     document.getElementById("result").innerText = "❗请输入用户名";
     return;
   }
+function showRegister(){
+  document.getElementById("registerBox").style.display = "block";
+}
 
+function closeRegister(){
+  document.getElementById("registerBox").style.display = "none";
+}
   fetch(API + "/register", {
     method:"POST",
     headers:{"Content-Type":"application/json"},
