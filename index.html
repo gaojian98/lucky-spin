@@ -118,24 +118,34 @@ function updateUI(data){
 }
 
 // 注册
-function register(){
-  let name = document.getElementById("username").value;
+function submitRegister(){
+  let userId = document.getElementById("username").value;
+  let password = document.getElementById("password").value;
+  let phone = document.getElementById("phone").value;
+  let bank = document.getElementById("bank").value;
 
-  if(!name){
-    alert("请输入用户名");
+  if(!userId  !password  !phone || !bank){
+    alert("请填写完整信息");
     return;
   }
-
-  userId = name;
 
   fetch(API + "/register", {
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ userId: userId })
+    body: JSON.stringify({
+      userId,
+      password,
+      phone,
+      bank
+    })
   })
-  .then(res => res.json())
-  .then(data => {
-    console.log("注册返回：", data);
+  .then(r=>r.json())
+  .then(d=>{
+    updateUI(d);
+    document.getElementById("result").innerText = "✅ 注册成功，送100000积分";
+    closeRegister();
+  });
+}
 
     // 👇 关键判断（防止报错）
     if(data.points !== undefined){
