@@ -140,12 +140,16 @@ function submitRegister(){
     })
   })
   .then(r=>r.json())
-  .then(d=>{
-    updateUI(d);
-    document.getElementById("result").innerText = "✅ 注册成功，送100000积分";
-    closeRegister();
-  });
-}
+ .then(d=>{
+  if(d.error){
+    document.getElementById("result").innerText = d.error;
+  }else{
+    updateUI(d.user);
+
+    // ✅ 直接显示后端返回的结果
+    document.getElementById("result").innerText = d.reward;
+  }
+})
 
     // 👇 关键判断（防止报错）
     if(data.points !== undefined){
