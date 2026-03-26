@@ -129,8 +129,12 @@ function register(){
 
 // 抽奖
 function spin(){
-  document.getElementById("wheel").style.transform =
-    "rotate(" + (Math.random()*1000+1000) + "deg)";
+   let userId = document.getElementById("username").value;
+
+  if(!userId){
+    document.getElementById("result").innerText = "❗请先输入用户名";
+    return;
+  }
 
   fetch(API + "/spin", {
     method:"POST",
