@@ -27,6 +27,16 @@
       border-radius:10px;
     }
   </style>
+.rule-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 两列 */
+  gap: 10px;
+}
+
+.rule-box ul {
+  grid-column: span 2; /* 奖项占两列（更好看） */
+}
+</style>
 </head>
 <div id="registerBox" style="display:none;position:fixed;top:30%;left:50%;transform:translate(-50%,-50%);
 background:white;padding:20px;border:1px solid #ccc;border-radius:10px;">
