@@ -10,27 +10,24 @@ app.use(express.static(__dirname));
 let users = {};
 
 app.post("/register", (req, res) => {
-  const { userId } = req.body;
+  const { userId, password, phone, bank } = req.body;
 
-  if (!userId) {
-    return res.json({ error: "no userId" });
+  if (!userId || !password) {
+    return res.json({ error: "信息不完整" });
   }
 
-  // 如果用户不存在就创建
   if (!users[userId]) {
     users[userId] = {
+      password,
+      phone,
+      bank,
       points: 100000,
       cash: 0
     };
   }
 
-  // 👇 一定要返回这个结构
-  res.json({
-    points: users[userId].points,
-    cash: users[userId].cash
-  });
+  res.json(users[userId]);
 });
-
 // 查询用户
 app.get("/user/:id", (req, res) => {
   res.json(users[req.params.id] || null);
