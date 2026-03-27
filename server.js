@@ -1,4 +1,3 @@
-cat > server.js << 'EOF'
 const express = require("express");
 const cors = require("cors");
 const app = express();
@@ -7,18 +6,17 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 let users = {};
-let rechargeRequests = []; // 充值申请记录
+let rechargeRequests = [];
 
 const REWARDS = [
-  { type: "iphone", name: "iPhone 15", value: 1, weight: 2, rarity: "legendary", icon: "📱" },
-  { type: "airpods", name: "AirPods Pro", value: 1, weight: 2, rarity: "legendary", icon: "🎧" },
-  { type: "cash", name: "50万越南盾", value: 500000, weight: 8, rarity: "epic", icon: "💰" },
-  { type: "cash", name: "30万越南盾", value: 300000, weight: 8, rarity: "epic", icon: "💵" },
-  { type: "points", name: "50000积分", value: 50000, weight: 15, rarity: "rare", icon: "⭐" },
-  { type: "points", name: "30000积分", value: 30000, weight: 15, rarity: "rare", icon: "✨" },
-  { type: "points", name: "10000积分", value: 10000, weight: 25, rarity: "common", icon: "🎫" },
-  { type: "points", name: "5000积分", value: 5000, weight: 25, rarity: "common", icon: "🎟️" },
-  { type: "none", name: "谢谢参与", value: 0, weight: 5, rarity: "none", icon: "😢" }
+  { type: "iphone", name: "iPhone 17", value: 1, weight: 0.01, rarity: "legendary", icon: "📱", segment: 0 },
+  { type: "airpods", name: "AirPods", value: 1, weight: 0.1, rarity: "legendary", icon: "🎧", segment: 1 },
+  { type: "cash", name: "1000K盾", value: 1000000, weight: 1, rarity: "epic", icon: "💰", segment: 2 },
+  { type: "cash", name: "50K盾", value: 50000, weight: 5, rarity: "epic", icon: "💵", segment: 3 },
+  { type: "points", name: "200K积分", value: 200000, weight: 10, rarity: "rare", icon: "⭐", segment: 4 },
+  { type: "points", name: "50K积分", value: 50000, weight: 15, rarity: "rare", icon: "✨", segment: 5 },
+  { type: "points", name: "10K积分", value: 10000, weight: 50, rarity: "common", icon: "🎫", segment: 6 },
+  { type: "points", name: "1K积分", value: 1000, weight: 30, rarity: "common", icon: "🎟️", segment: 7 }
 ];
 
 const TOTAL_WEIGHT = REWARDS.reduce((sum, r) => sum + r.weight, 0);
@@ -33,7 +31,6 @@ function selectReward() {
   return REWARDS[REWARDS.length - 1];
 }
 
-// 注册/登录
 app.post("/register", (req, res) => {
   const { userId, password, phone, bank } = req.body;
   if (!userId || userId.trim() === "") return res.json({ error: "请输入用户名" });
@@ -64,7 +61,6 @@ app.post("/register", (req, res) => {
   });
 });
 
-// 获取用户信息
 app.get("/user/:id", (req, res) => {
   const user = users[req.params.id];
   if (!user) return res.json({ error: "用户不存在" });
@@ -78,7 +74,6 @@ app.get("/user/:id", (req, res) => {
   });
 });
 
-// 抽奖
 app.post("/spin", (req, res) => {
   const { userId } = req.body;
   if (!userId || !users[userId]) return res.json({ error: "请先登录" });
@@ -102,41 +97,28 @@ app.post("/spin", (req, res) => {
   user.lastReward = reward;
   res.json({
     user: { username: userId, points: user.points, cash: user.cash, spinCount: user.spinCount },
-    reward: { type: reward.type, name: reward.name, value: reward.value, rarity: reward.rarity, icon: reward.icon }
+    reward: { type: reward.type, name: reward.name, value: reward.value, rarity: reward.rarity, icon: reward.icon, segment: reward.segment }
   });
 });
 
-// ========== 充值相关接口 ==========
-
-// 1️⃣ 提交充值申请
 app.post("/recharge/request", (req, res) => {
   const { userId, amount, method } = req.body;
-  
-  if (!userId || !users[userId]) {
-    return res.json({ error: "请先登录" });
-  }
-  
-  if (!amount || amount < 10000) {
-    return res.json({ error: "最低充值 10,000 积分" });
-  }
-  
-  if (!method || !["momo", "bank", "zalo"].includes(method)) {
-    return res.json({ error: "充值方式不存在" });
-  }
+  if (!userId || !users[userId]) return res.json({ error: "请先登录" });
+  if (!amount || amount < 10000) return res.json({ error: "最低充值 10,000 积分" });
+  if (!method || !["momo", "bank", "zalo", "account_cash"].includes(method)) return res.json({ error: "充值方式不存在" });
   
   const request = {
     id: Date.now(),
     userId,
     amount,
     method,
-    status: "pending", // pending 待审核 / approved 已批准 / rejected 已拒绝
+    status: "pending",
     createdAt: new Date(),
     approvedAt: null,
     approvedBy: null
   };
   
   rechargeRequests.push(request);
-  
   res.json({
     success: true,
     message: "✅ 充值申请已提交，请等待客服审核",
@@ -146,7 +128,6 @@ app.post("/recharge/request", (req, res) => {
   });
 });
 
-// 2️⃣ 获取充值申请列表（管理后台用）
 app.get("/recharge/requests", (req, res) => {
   const pendingRequests = rechargeRequests.filter(r => r.status === "pending");
   res.json({
@@ -156,29 +137,16 @@ app.get("/recharge/requests", (req, res) => {
   });
 });
 
-// 3️⃣ 批准充值申请（管理后台调用）
 app.post("/recharge/approve", (req, res) => {
   const { requestId, adminPassword } = req.body;
-  
-  // 简单的管理员密码验证（生产环境应该用更安全的方式）
-  if (adminPassword !== "admin123") {
-    return res.json({ error: "管理员密码错误" });
-  }
+  if (adminPassword !== "admin123") return res.json({ error: "管理员密码错误" });
   
   const request = rechargeRequests.find(r => r.id === requestId);
-  if (!request) {
-    return res.json({ error: "充值申请不存在" });
-  }
+  if (!request) return res.json({ error: "充值申请不存在" });
+  if (request.status !== "pending") return res.json({ error: "该申请已处理" });
   
-  if (request.status !== "pending") {
-    return res.json({ error: "该申请已处理" });
-  }
-  
-  // 批准充值：给用户加积分
   const user = users[request.userId];
-  if (!user) {
-    return res.json({ error: "用户不存在" });
-  }
+  if (!user) return res.json({ error: "用户不存在" });
   
   user.points += request.amount;
   request.status = "approved";
@@ -194,18 +162,12 @@ app.post("/recharge/approve", (req, res) => {
   });
 });
 
-// 4️⃣ 拒绝充值申请
 app.post("/recharge/reject", (req, res) => {
   const { requestId, reason, adminPassword } = req.body;
-  
-  if (adminPassword !== "admin123") {
-    return res.json({ error: "管理员密码错误" });
-  }
+  if (adminPassword !== "admin123") return res.json({ error: "管理员密码错误" });
   
   const request = rechargeRequests.find(r => r.id === requestId);
-  if (!request) {
-    return res.json({ error: "充值申请不存在" });
-  }
+  if (!request) return res.json({ error: "充值申请不存在" });
   
   request.status = "rejected";
   request.rejectReason = reason || "管理员拒绝";
@@ -219,17 +181,10 @@ app.post("/recharge/reject", (req, res) => {
   });
 });
 
-// 5️⃣ 直接充值（后台管理员直接给用户加积分）
 app.post("/recharge/direct", (req, res) => {
   const { userId, amount, adminPassword, reason } = req.body;
-  
-  if (adminPassword !== "admin123") {
-    return res.json({ error: "管理员密码错误" });
-  }
-  
-  if (!users[userId]) {
-    return res.json({ error: "用户不存在" });
-  }
+  if (adminPassword !== "admin123") return res.json({ error: "管理员密码错误" });
+  if (!users[userId]) return res.json({ error: "用户不存在" });
   
   users[userId].points += amount;
   
@@ -243,7 +198,34 @@ app.post("/recharge/direct", (req, res) => {
   });
 });
 
-// 获取用户充值历史
+app.post("/recharge/account_cash", (req, res) => {
+  const { userId, amount } = req.body;
+  if (!userId || !users[userId]) return res.json({ error: "请先登录" });
+  
+  const user = users[userId];
+  if (!amount || amount < 10000) return res.json({ error: "最低充值 10,000 积分" });
+  
+  const requiredCash = Math.ceil(amount / 100);
+  if (user.cash < requiredCash) return res.json({ error: "账户现金不足。需要 " + requiredCash + " 越南盾，实际有 " + user.cash + " 越南盾" });
+  
+  user.cash -= requiredCash;
+  user.points += amount;
+  
+  res.json({
+    success: true,
+    message: "✅ 已用账户现金充值",
+    userId: userId,
+    pointsAdded: amount,
+    cashDeducted: requiredCash,
+    user: {
+      username: userId,
+      points: user.points,
+      cash: user.cash,
+      spinCount: user.spinCount
+    }
+  });
+});
+
 app.get("/recharge/history/:userId", (req, res) => {
   const userRequests = rechargeRequests.filter(r => r.userId === req.params.userId);
   res.json({
@@ -259,6 +241,6 @@ app.listen(PORT, () => {
   console.log("🎉 幸运转盘服务器启动成功！");
   console.log("🌐 访问地址: http://localhost:" + PORT);
   console.log("💰 充值接口已启用");
+  console.log("📊 管理后台: http://localhost:" + PORT + "/admin.html");
   console.log("🎉 ========================================\n");
 });
-EOF
