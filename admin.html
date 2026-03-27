@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>幸运转盘 - 管理后台</title>
+  <style>
+    body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 12px; text-align: left; border: 1px solid #ddd; }
+    th { background: #667eea; color: white; }
+    .pending { background: #fff3cd; }
+    .approved { background: #d4edda; }
+    .rejected { background: #f8d7da; }
+    button { padding: 8px 16px; margin: 5px; cursor: pointer; border: none; border-radius: 5px; }
+    .btn-approve { background: #28a745; color: white; }
+    .btn-reject { background: #dc3545; color: white; }
+    .btn-direct { background: #007bff; color: white; }
+    input, select { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 5px; }
+    .stats { background: #f0f0f0; padding: 15px; border-radius: 8px; margin: 15px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎉 幸运转盘 - 管理后台</h1>
+    
+    <div class="stats">
+      <p><strong>总申请数：</strong><span id="totalCount">0</span> | <strong>待审核：</strong><span id="pendingCount">0</span></p>
+    </div>
+    
+    <h2>💰 待审核充值申请</h2>
+    <div id="requestsList"></div>
+    
+    <hr style="margin: 30px 0;">
+    
+    <h2>🔧 直接充值用户</h2>
+    <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 15px 0;">
+      <p>用户名：<input type="text" id="directUserId" placeholder="输入用户名" style="width: 200px;"></p>
+      <p>充值金额：<input type="number" id="directAmount" placeholder="输入金额" style="width: 200px;"></p>
+      <p><button class="btn-direct" onclick="directRecharge()">💎 直接充值</button></p>
+    </div>
+  </div>
+
+  <script>
+    const API = "http://localhost:3000";
+    const ADMIN_PASSWORD = "admin123";
+    
+    function loadRequests() {
+      fetch(API + "/recharge/requests")
+        .then(r => r.json())
+        .then(d => {
+          document.getElementById("totalCount").innerText = d.total;
+          document.getElementById("pendingCount").innerText = d.pending;
+          
+          let html = '';
+          if (d.requests.length === 0) {
+            html = '<p style="text-align: center; color: #999;">暂无充值申请</p>';
+          } else {
+            html += '<table>';
+            html += '<tr><th>申请ID</th><th>用户</th><th>金额</th><th>方式</th><th>状态</th><th>申请时间</th><th>操作</th></tr>';
+            
+            d.requests.forEach(r => {
+              const statusClass = r.status === 'pending' ? 'pending' : r.status === 'approved' ? 'approved' : 'rejected';
+              const statusText = r.status === 'pending' ? '⏳ 待审核' : r.status === 'approved' ? '✅ 已批准' : '❌ 已拒绝';
+              const methodText = r.method === 'momo' ? '📱 MoMo' : r.method === 'bank' ? '🏦 银行' : '💬 Zalo';
+              const createdTime = new Date(r.createdAt).toLocaleString('zh-CN');
+              
+              html += `<tr class="${statusClass}">
+                <td>${r.id}</td>
+                <td><strong>${r.userId}</strong></td>
+                <td><strong>${r.amount.toLocaleString()}</strong></td>
+                <td>${methodText}</td>
+                <td>${statusText}</td>
+                <td>${createdTime}</td>
+                <td>`;
+              
+              if (r.status === 'pending') {
+                html += `<button class="btn-approve" onclick="approveRequest(${r.id})">✅ 批准</button>`;
+                html += `<button class="btn-reject" onclick="rejectRequest(${r.id})">❌ 拒绝</button>`;
+              } else if (r.status === 'rejected') {
+                html += `<span style="color: #999;">已拒绝</span>`;
+              } else {
+                html += `<span style="color: #999;">已处理</span>`;
+              }
+              
+              html += `</td></tr>`;
+            });
+            
+            html += '</table>';
+          }
+          
+          document.getElementById("requestsList").innerHTML = html;
+        })
+        .catch(e => {
+          console.error(e);
+          document.getElementById("requestsList").innerHTML = '<p style="color: red;">❌ 无法连接到服务器</p>';
+        });
+    }
+    
+    function approveRequest(requestId) {
+      if (!confirm("确认批准该充值申请吗？")) return;
+      
+      fetch(API + "/recharge/approve", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          requestId: requestId,
+          adminPassword: ADMIN_PASSWORD
+        })
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) {
+          alert("❌ " + d.error);
+        } else {
+          alert("✅ " + d.message + "\n用户：" + d.userId + "\n新积分：" + d.userNewPoints.toLocaleString());
+          loadRequests();
+        }
+      })
+      .catch(e => {
+        console.error(e);
+        alert("❌ 批准失败");
+      });
+    }
+    
+    function rejectRequest(requestId) {
+      const reason = prompt("拒绝理由（默认：管理员拒绝）：");
+      
+      fetch(API + "/recharge/reject", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          requestId: requestId,
+          reason: reason || "管理员拒绝",
+          adminPassword: ADMIN_PASSWORD
+        })
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) {
+          alert("❌ " + d.error);
+        } else {
+          alert("✅ " + d.message + "\n理由：" + d.rejectReason);
+          loadRequests();
+        }
+      })
+      .catch(e => {
+        console.error(e);
+        alert("❌ 拒绝失败");
+      });
+    }
+    
+    function directRecharge() {
+      const userId = document.getElementById("directUserId").value.trim();
+      const amount = parseInt(document.getElementById("directAmount").value);
+      
+      if (!userId) {
+        alert("❗ 请输入用户名");
+        return;
+      }
+      
+      if (!amount || amount < 1000) {
+        alert("❗ 金额最少 1000 积分");
+        return;
+      }
+      
+      if (!confirm("确认给 " + userId + " 充值 " + amount.toLocaleString() + " 积分吗？")) {
+        return;
+      }
+      
+      fetch(API + "/recharge/direct", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          userId: userId,
+          amount: amount,
+          adminPassword: ADMIN_PASSWORD,
+          reason: "后台直接充值"
+        })
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) {
+          alert("❌ " + d.error);
+        } else {
+          alert("✅ " + d.message + "\n用户新积分：" + d.userNewPoints.toLocaleString());
+          document.getElementById("directUserId").value = "";
+          document.getElementById("directAmount").value = "";
+          loadRequests();
+        }
+      })
+      .catch(e => {
+        console.error(e);
+        alert("❌ 充值失败");
+      });
+    }
+    
+    // 页面加载时立即刷新
+    loadRequests();
+    
+    // 每 5 秒自动刷新一次
+    setInterval(loadRequests, 5000);
+  </script>
+</body>
+</html>
