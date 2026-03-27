@@ -259,6 +259,100 @@
     function recharge() { alert("💰 充值方式\n\n📱 MoMo 钱包\n🏦 越南银行\n💬 Zalo Pay\n\n📞 联系客服：+84 123 456 7890"); }
     document.getElementById("registerBox").addEventListener("click", (e) => { if (e.target.id === "registerBox") closeRegister(); });
     document.getElementById("rewardModal").addEventListener("click", (e) => { if (e.target.id === "rewardModal") closeRewardModal(); });
-  </script>
+ 
+  <script>
+// 显示充值窗口
+function showRechargeModal() {
+  document.getElementById("rechargeModal").classList.add("active");
+}
+
+// 关闭充值窗口
+function closeRechargeModal() {
+  document.getElementById("rechargeModal").classList.remove("active");
+}
+
+// 提交充值申请
+function submitRecharge() {
+  const amount = parseInt(document.getElementById("rechargeAmount").value);
+  const method = document.getElementById("rechargeMethod").value;
+  
+  if (!amount || amount < 10000) {
+    alert("❗ 最低充值 10,000 积分");
+    return;
+  }
+  
+  if (!method) {
+    alert("❗ 请选择充值方式");
+    return;
+  }
+  
+  fetch(API + "/recharge/request", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      userId: currentUser,
+      amount: amount,
+      method: method
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.error) {
+      alert("❌ " + d.error);
+    } else {
+      alert("✅ 充值申请已提交！\n\n请通过 " + (method === 'momo' ? 'MoMo' : method === 'bank' ? '银行' : 'Zalo') + " 转账 " + amount + " 积分\n\n等待客服确认后积分将自动到账");
+      document.getElementById("rechargeAmount").value = "";
+      document.getElementById("rechargeMethod").value = "";
+      closeRechargeModal();
+    }
+  })
+  .catch(e => {
+    console.error(e);
+    alert("❌ 提交失败");
+  });
+}
+
+// 点击外部关闭窗口
+document.getElementById("rechargeModal").addEventListener("click", (e) => {
+  if (e.target.id === "rechargeModal") closeRechargeModal();
+});
+</script>
+  
+<!-- 充值模态框 -->
+<div id="rechargeModal" class="modal">
+  <div class="modal-content">
+    <h3>💰 充值积分</h3>
+    <p style="color: #666; font-size: 13px;">最低充值：10,000 积分</p>
+    
+    <label style="display: block; margin: 15px 0;">
+      <span style="font-weight: bold;">充值金额（积分）</span>
+      <input type="number" id="rechargeAmount" placeholder="输入金额" min="10000" style="width: 100%; padding: 10px; margin-top: 5px;">
+    </label>
+    
+    <label style="display: block; margin: 15px 0;">
+      <span style="font-weight: bold;">充值方式</span>
+      <select id="rechargeMethod" style="width: 100%; padding: 10px; margin-top: 5px;">
+        <option value="">-- 选择充值方式 --</option>
+        <option value="momo">📱 MoMo 钱包</option>
+        <option value="bank">🏦 越南银行转账</option>
+        <option value="zalo">💬 Zalo Pay</option>
+      </select>
+    </label>
+    
+    <div style="background: #f0f0f0; padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 12px; line-height: 1.6;">
+      <p><strong>充值步骤：</strong></p>
+      <p>1️⃣ 填写金额和选择方式</p>
+      <p>2️⃣ 点击"提交申请"</p>
+      <p>3️⃣ 通过选定方式转账</p>
+      <p>4️⃣ 等待客服确认（通常 5-10 分钟）</p>
+      <p>5️⃣ 积分自动到账</p>
+    </div>
+    
+    <div class="modal-buttons">
+      <button class="btn-secondary" onclick="closeRechargeModal()">取消</button>
+      <button class="btn-primary" onclick="submitRecharge()">提交申请</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
