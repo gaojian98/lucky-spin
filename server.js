@@ -578,8 +578,26 @@ app.get("/recharge/history/:userId", (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
+// Simple in-memory rate limiter for the admin page route
+const adminPageRequests = new Map();
+const ADMIN_RATE_LIMIT = 60;
+const ADMIN_RATE_WINDOW_MS = 60000;
+
+function adminRateLimit(req, res, next) {
+  const ip = req.ip || (req.connection && req.connection.remoteAddress) || "unknown";
+  const now = Date.now();
+  const record = adminPageRequests.get(ip);
+  if (record && now < record.resetTime) {
+    if (record.count >= ADMIN_RATE_LIMIT) return res.status(429).send("Too Many Requests");
+    record.count++;
+  } else {
+    adminPageRequests.set(ip, { count: 1, resetTime: now + ADMIN_RATE_WINDOW_MS });
+  }
+  next();
+}
+
 // Serve admin login page for /admin and /admin/
-app.get("/admin", (req, res) => {
+app.get("/admin", adminRateLimit, (req, res) => {
   res.sendFile(path.join(__dirname, "admin", "index.html"), err => {
     if (err) res.status(404).send("Admin page not found");
   });
