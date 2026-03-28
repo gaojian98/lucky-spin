@@ -585,8 +585,15 @@ app.get("/admin", (req, res) => {
   });
 });
 
+// Block direct access to sensitive server-side files
+const SENSITIVE_FILES = new Set(["/server.js", "/package.json", "/package-lock.json"]);
+app.use((req, res, next) => {
+  if (SENSITIVE_FILES.has(req.path)) return res.status(403).send("Forbidden");
+  next();
+});
+
 // Static files served last
-app.use(express.static(__dirname));
+app.use(express.static(__dirname, { index: "index.html" }));
 
 app.listen(PORT, () => {
   console.log("\n🎉 ========================================");
