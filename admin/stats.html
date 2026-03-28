@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理后台 - 数据统计</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; min-height: 100vh; }
+    .navbar { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 0 24px; display: flex; align-items: center; height: 56px; gap: 8px; flex-wrap: wrap; }
+    .navbar .brand { font-weight: 700; font-size: 18px; margin-right: 16px; }
+    .navbar a { color: rgba(255,255,255,.85); text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 14px; transition: background .2s; }
+    .navbar a:hover, .navbar a.active { background: rgba(255,255,255,.2); color: #fff; }
+    .navbar .spacer { flex: 1; }
+    .logout-btn { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3); color: #fff; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    h2 { color: #333; margin-bottom: 20px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .stat-card .label { color: #888; font-size: 13px; margin-bottom: 8px; }
+    .stat-card .value { font-size: 26px; font-weight: 700; color: #667eea; }
+    .section { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 20px; margin-bottom: 24px; }
+    .section h3 { color: #444; font-size: 16px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; }
+    th { background: #f8f9fa; color: #555; font-weight: 600; }
+    tr:hover { background: #fafafa; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+    .badge-green { background: #d4edda; color: #155724; }
+    .badge-yellow { background: #fff3cd; color: #856404; }
+    .badge-red { background: #f8d7da; color: #721c24; }
+    input[type="text"] { padding: 9px 12px; border: 1px solid #ddd; border-radius: 7px; font-size: 14px; outline: none; }
+    input:focus { border-color: #667eea; }
+    .btn { padding: 9px 16px; border: none; border-radius: 7px; cursor: pointer; font-size: 14px; font-weight: 500; transition: opacity .2s; }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: #667eea; color: #fff; }
+    .btn-secondary { background: #6c757d; color: #fff; }
+    .btn-sm { padding: 5px 10px; font-size: 13px; }
+    .pagination { display: flex; gap: 8px; padding: 14px 0; justify-content: center; align-items: center; }
+    .page-info { color: #888; font-size: 13px; margin: 0 8px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+    .recharge-row.approved { background: #f0fff4; }
+    .recharge-row.pending { background: #fffbf0; }
+    .recharge-row.rejected { background: #fff5f5; }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <span class="brand">🎉 幸运转盘管理</span>
+  <a href="/admin/dashboard.html">仪表板</a>
+  <a href="/admin/users.html">用户管理</a>
+  <a href="/admin/config.html">游戏配置</a>
+  <a href="/admin/stats.html" class="active">数据统计</a>
+  <a href="/admin/managers.html" id="navManagers" style="display:none">管理员审核</a>
+  <div class="spacer"></div>
+  <span style="color:rgba(255,255,255,.9);font-size:13px" id="userInfo"></span>
+  <button class="logout-btn" onclick="logout()">退出</button>
+</nav>
+<div class="container">
+  <h2>📈 数据统计</h2>
+
+  <!-- Summary Stats -->
+  <div class="stats-grid">
+    <div class="stat-card"><div class="label">总用户数</div><div class="value" id="s_totalUsers">-</div></div>
+    <div class="stat-card"><div class="label">总转盘次数</div><div class="value" id="s_totalSpins">-</div></div>
+    <div class="stat-card"><div class="label">已批准充值</div><div class="value" id="s_totalDeposits">-</div></div>
+    <div class="stat-card"><div class="label">待审充值数</div><div class="value" id="s_pendingDeposits">-</div></div>
+    <div class="stat-card"><div class="label">冻结用户</div><div class="value" id="s_frozenCount">-</div></div>
+  </div>
+
+  <div class="two-col">
+    <!-- Win breakdown -->
+    <div class="section">
+      <h3>🏆 奖品中奖统计</h3>
+      <table>
+        <thead><tr><th>奖品名称</th><th>中奖次数</th><th>总价值</th></tr></thead>
+        <tbody id="winBreakdown"><tr><td colspan="3" style="text-align:center;color:#aaa">加载中...</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- User records lookup -->
+    <div class="section">
+      <h3>🔍 查询会员中奖记录</h3>
+      <div style="display:flex;gap:10px;margin-bottom:16px">
+        <input type="text" id="queryUserId" placeholder="输入用户名" style="flex:1">
+        <button class="btn btn-primary" onclick="queryUserRecords()">查询</button>
+      </div>
+      <div id="userRecordsResult">
+        <p style="color:#aaa;font-size:13px;text-align:center;padding:20px 0">输入用户名后点击查询</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- All spin records -->
+  <div class="section">
+    <h3>🎰 全部中奖记录</h3>
+    <table>
+      <thead><tr><th>用户</th><th>奖品</th><th>类型</th><th>价值</th><th>时间</th></tr></thead>
+      <tbody id="allRecords"><tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px">加载中...</td></tr></tbody>
+    </table>
+    <div class="pagination">
+      <button class="btn btn-secondary btn-sm" onclick="changeRecordsPage(-1)">◀ 上一页</button>
+      <span class="page-info" id="recordsPageInfo">-</span>
+      <button class="btn btn-secondary btn-sm" onclick="changeRecordsPage(1)">下一页 ▶</button>
+    </div>
+  </div>
+
+  <!-- Recharge history -->
+  <div class="section">
+    <h3>💰 充值记录</h3>
+    <table>
+      <thead><tr><th>申请ID</th><th>用户</th><th>金额</th><th>方式</th><th>状态</th><th>申请时间</th></tr></thead>
+      <tbody id="rechargeTable"><tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px">加载中...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  const API = "";
+  const token = localStorage.getItem("adminToken");
+  const role = localStorage.getItem("adminRole");
+  if (!token) { window.location.href = "/admin/index.html"; }
+  document.getElementById("userInfo").textContent = "👤 " + (localStorage.getItem("adminName") || "管理员");
+  if (role === "super") document.getElementById("navManagers").style.display = "";
+
+  let recordsPage = 1;
+  let recordsTotalPages = 1;
+
+  function authFetch(url, opts = {}) {
+    opts.headers = opts.headers || {};
+    opts.headers["Authorization"] = "Bearer " + token;
+    if (opts.body && typeof opts.body === "object") {
+      opts.headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(opts.body);
+    }
+    return fetch(API + url, opts).then(r => r.json());
+  }
+
+  function logout() {
+    authFetch("/api/admin/logout", { method: "POST" }).finally(() => {
+      localStorage.clear(); window.location.href = "/admin/index.html";
+    });
+  }
+
+  function loadSummary() {
+    authFetch("/api/admin/stats/summary").then(d => {
+      if (d.error) return;
+      document.getElementById("s_totalUsers").textContent = d.totalUsers;
+      document.getElementById("s_totalSpins").textContent = d.totalSpins;
+      document.getElementById("s_totalDeposits").textContent = (d.totalDeposits || 0).toLocaleString();
+      document.getElementById("s_pendingDeposits").textContent = d.pendingDeposits;
+      document.getElementById("s_frozenCount").textContent = d.frozenCount;
+
+      const breakdown = d.winBreakdown || {};
+      const keys = Object.keys(breakdown);
+      if (!keys.length) {
+        document.getElementById("winBreakdown").innerHTML = '<tr><td colspan="3" style="text-align:center;color:#aaa">暂无数据</td></tr>';
+      } else {
+        const sorted = keys.sort((a, b) => breakdown[b].count - breakdown[a].count);
+        document.getElementById("winBreakdown").innerHTML = sorted.map(k => `
+          <tr><td>${k}</td><td>${breakdown[k].count}</td><td>${(breakdown[k].totalValue || 0).toLocaleString()}</td></tr>
+        `).join("");
+      }
+    });
+  }
+
+  function loadAllRecords(page = 1) {
+    recordsPage = page;
+    authFetch(`/api/admin/stats/records?page=${page}&pageSize=20`).then(d => {
+      if (d.error) return;
+      recordsTotalPages = Math.max(1, Math.ceil(d.total / d.pageSize));
+      document.getElementById("recordsPageInfo").textContent = `第 ${d.page} / ${recordsTotalPages} 页，共 ${d.total} 条`;
+      const tbody = document.getElementById("allRecords");
+      if (!d.items.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px">暂无记录</td></tr>';
+        return;
+      }
+      tbody.innerHTML = d.items.map(r => `
+        <tr>
+          <td>${r.userId}</td>
+          <td>${r.reward.icon || ""} ${r.reward.name}</td>
+          <td><span class="badge badge-${r.reward.rarity === 'legendary' ? 'red' : r.reward.rarity === 'epic' ? 'yellow' : 'green'}">${r.reward.rarity}</span></td>
+          <td>${(r.reward.value || 0).toLocaleString()}</td>
+          <td>${new Date(r.timestamp).toLocaleString("zh-CN")}</td>
+        </tr>`).join("");
+    });
+  }
+
+  function changeRecordsPage(delta) {
+    const np = recordsPage + delta;
+    if (np < 1 || np > recordsTotalPages) return;
+    loadAllRecords(np);
+  }
+
+  function queryUserRecords() {
+    const userId = document.getElementById("queryUserId").value.trim();
+    if (!userId) { alert("请输入用户名"); return; }
+    const resultDiv = document.getElementById("userRecordsResult");
+    resultDiv.innerHTML = '<p style="color:#aaa;text-align:center">查询中...</p>';
+    authFetch(`/api/admin/stats/user/${encodeURIComponent(userId)}/records`).then(d => {
+      if (d.error) { resultDiv.innerHTML = `<p style="color:#dc3545">${d.error}</p>`; return; }
+      if (!d.records.length) { resultDiv.innerHTML = '<p style="color:#aaa;text-align:center">该用户暂无中奖记录</p>'; return; }
+      resultDiv.innerHTML = `
+        <p style="color:#555;font-size:13px;margin-bottom:10px">共 ${d.total} 条记录</p>
+        <table>
+          <thead><tr><th>奖品</th><th>价值</th><th>时间</th></tr></thead>
+          <tbody>${d.records.slice().reverse().slice(0, 20).map(r => `
+            <tr>
+              <td>${r.reward.icon || ""} ${r.reward.name}</td>
+              <td>${(r.reward.value || 0).toLocaleString()}</td>
+              <td>${new Date(r.timestamp).toLocaleString("zh-CN")}</td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+        ${d.total > 20 ? '<p style="color:#aaa;font-size:12px;margin-top:8px">仅显示最新20条</p>' : ''}
+      `;
+    });
+  }
+
+  function loadRechargeHistory() {
+    fetch(API + "/recharge/requests").then(r => r.json()).then(d => {
+      const tbody = document.getElementById("rechargeTable");
+      if (!d.requests || !d.requests.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px">暂无充值记录</td></tr>';
+        return;
+      }
+      const methodMap = { momo: "📱 MoMo", bank: "🏦 银行", zalo: "💬 Zalo", account_cash: "💵 账户" };
+      const statusMap = {
+        pending: '<span class="badge badge-yellow">⏳ 待审核</span>',
+        approved: '<span class="badge badge-green">✅ 已批准</span>',
+        rejected: '<span class="badge badge-red">❌ 已拒绝</span>'
+      };
+      tbody.innerHTML = d.requests.slice().reverse().slice(0, 50).map(r => `
+        <tr class="recharge-row ${r.status}">
+          <td>${r.id}</td>
+          <td>${r.userId}</td>
+          <td>${(r.amount || 0).toLocaleString()}</td>
+          <td>${methodMap[r.method] || r.method}</td>
+          <td>${statusMap[r.status] || r.status}</td>
+          <td>${new Date(r.createdAt).toLocaleString("zh-CN")}</td>
+        </tr>`).join("");
+    });
+  }
+
+  loadSummary();
+  loadAllRecords(1);
+  loadRechargeHistory();
+</script>
+</body>
+</html>

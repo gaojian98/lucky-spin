@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理后台 - 用户管理</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; min-height: 100vh; }
+    .navbar { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 0 24px; display: flex; align-items: center; height: 56px; gap: 8px; flex-wrap: wrap; }
+    .navbar .brand { font-weight: 700; font-size: 18px; margin-right: 16px; }
+    .navbar a { color: rgba(255,255,255,.85); text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 14px; transition: background .2s; }
+    .navbar a:hover, .navbar a.active { background: rgba(255,255,255,.2); color: #fff; }
+    .navbar .spacer { flex: 1; }
+    .logout-btn { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3); color: #fff; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .container { max-width: 1300px; margin: 0 auto; padding: 24px; }
+    h2 { color: #333; margin-bottom: 20px; }
+    .toolbar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    input[type="text"], input[type="number"], input[type="password"] { padding: 9px 12px; border: 1px solid #ddd; border-radius: 7px; font-size: 14px; outline: none; }
+    input:focus { border-color: #667eea; }
+    .btn { padding: 9px 16px; border: none; border-radius: 7px; cursor: pointer; font-size: 14px; font-weight: 500; transition: opacity .2s; }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: #667eea; color: #fff; }
+    .btn-danger { background: #dc3545; color: #fff; }
+    .btn-warning { background: #fd7e14; color: #fff; }
+    .btn-success { background: #28a745; color: #fff; }
+    .btn-secondary { background: #6c757d; color: #fff; }
+    .btn-sm { padding: 5px 10px; font-size: 13px; }
+    .section { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 11px 14px; text-align: left; border-bottom: 1px solid #f0f0f0; }
+    th { background: #f8f9fa; color: #555; font-weight: 600; }
+    tr:hover { background: #fafafa; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+    .badge-green { background: #d4edda; color: #155724; }
+    .badge-red { background: #f8d7da; color: #721c24; }
+    .pagination { display: flex; gap: 8px; padding: 14px; justify-content: center; align-items: center; }
+    .page-info { color: #888; font-size: 13px; margin: 0 8px; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.4); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #fff; border-radius: 12px; padding: 28px; width: 420px; max-width: 95vw; }
+    .modal h3 { margin-bottom: 18px; color: #333; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; color: #555; font-size: 13px; margin-bottom: 5px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+    .msg { font-size: 13px; margin-top: 8px; }
+    .msg.err { color: #dc3545; }
+    .msg.ok { color: #28a745; }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <span class="brand">🎉 幸运转盘管理</span>
+  <a href="/admin/dashboard.html">仪表板</a>
+  <a href="/admin/users.html" class="active">用户管理</a>
+  <a href="/admin/config.html">游戏配置</a>
+  <a href="/admin/stats.html">数据统计</a>
+  <a href="/admin/managers.html" id="navManagers" style="display:none">管理员审核</a>
+  <div class="spacer"></div>
+  <span style="color:rgba(255,255,255,.9);font-size:13px" id="userInfo"></span>
+  <button class="logout-btn" onclick="logout()">退出</button>
+</nav>
+<div class="container">
+  <h2>👥 用户管理</h2>
+  <div class="toolbar">
+    <input type="text" id="searchInput" placeholder="搜索用户名或手机号" style="width:240px">
+    <button class="btn btn-primary" onclick="loadUsers(1)">🔍 搜索</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('searchInput').value=''; loadUsers(1)">重置</button>
+  </div>
+  <div class="section">
+    <table>
+      <thead>
+        <tr><th>用户名</th><th>手机号</th><th>积分</th><th>现金</th><th>转盘次数</th><th>状态</th><th>注册时间</th><th>操作</th></tr>
+      </thead>
+      <tbody id="userTable">
+        <tr><td colspan="8" style="text-align:center;color:#aaa;padding:30px">加载中...</td></tr>
+      </tbody>
+    </table>
+    <div class="pagination">
+      <button class="btn btn-secondary btn-sm" onclick="changePage(-1)">◀ 上一页</button>
+      <span class="page-info" id="pageInfo">-</span>
+      <button class="btn btn-secondary btn-sm" onclick="changePage(1)">下一页 ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal-overlay" id="resetModal">
+  <div class="modal">
+    <h3>🔑 重置密码</h3>
+    <p style="color:#888;font-size:14px;margin-bottom:14px">为用户 <strong id="resetUserId"></strong> 重置密码</p>
+    <div class="form-group">
+      <label>新密码</label>
+      <input type="password" id="newPwd" placeholder="输入新密码" style="width:100%">
+    </div>
+    <div id="resetMsg" class="msg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('resetModal')">取消</button>
+      <button class="btn btn-primary" onclick="doResetPassword()">确认重置</button>
+    </div>
+  </div>
+</div>
+
+<!-- View Records Modal -->
+<div class="modal-overlay" id="recordsModal">
+  <div class="modal" style="width:600px;max-width:95vw">
+    <h3>🏆 <span id="recordsUserId"></span> 的中奖记录</h3>
+    <div id="recordsContent" style="max-height:360px;overflow-y:auto;margin-top:14px">
+      <table><thead><tr><th>奖品</th><th>价值</th><th>时间</th></tr></thead>
+      <tbody id="recordsTable"></tbody></table>
+    </div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('recordsModal')">关闭</button></div>
+  </div>
+</div>
+
+<script>
+  const API = "";
+  const token = localStorage.getItem("adminToken");
+  const role = localStorage.getItem("adminRole");
+  if (!token) { window.location.href = "/admin/index.html"; }
+  document.getElementById("userInfo").textContent = "👤 " + (localStorage.getItem("adminName") || "管理员");
+  if (role === "super") document.getElementById("navManagers").style.display = "";
+
+  let currentPage = 1;
+  let totalPages = 1;
+  let selectedUserId = "";
+
+  function authFetch(url, opts = {}) {
+    opts.headers = opts.headers || {};
+    opts.headers["Authorization"] = "Bearer " + token;
+    if (opts.body && typeof opts.body === "object") {
+      opts.headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(opts.body);
+    }
+    return fetch(API + url, opts).then(r => r.json());
+  }
+
+  function logout() {
+    authFetch("/api/admin/logout", { method: "POST" }).finally(() => {
+      localStorage.clear(); window.location.href = "/admin/index.html";
+    });
+  }
+
+  function loadUsers(page = 1) {
+    currentPage = page;
+    const search = document.getElementById("searchInput").value.trim();
+    const url = `/api/admin/users?page=${page}&pageSize=15${search ? "&search=" + encodeURIComponent(search) : ""}`;
+    authFetch(url).then(d => {
+      if (d.error) { alert(d.error); return; }
+      totalPages = Math.max(1, Math.ceil(d.total / d.pageSize));
+      document.getElementById("pageInfo").textContent = `第 ${d.page} / ${totalPages} 页，共 ${d.total} 条`;
+      const tbody = document.getElementById("userTable");
+      if (!d.items.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px">暂无用户</td></tr>';
+        return;
+      }
+      tbody.innerHTML = d.items.map(u => `
+        <tr>
+          <td><strong>${u.userId}</strong></td>
+          <td>${u.phone || "-"}</td>
+          <td>${(u.points || 0).toLocaleString()}</td>
+          <td>${(u.cash || 0).toLocaleString()}</td>
+          <td>${u.spinCount || 0}</td>
+          <td><span class="badge ${u.frozen ? 'badge-red' : 'badge-green'}">${u.frozen ? "🔒 已冻结" : "✅ 正常"}</span></td>
+          <td>${u.createdAt ? new Date(u.createdAt).toLocaleDateString("zh-CN") : "-"}</td>
+          <td>
+            <button class="btn btn-secondary btn-sm" onclick="viewRecords('${u.userId}')">记录</button>
+            ${u.frozen
+              ? `<button class="btn btn-success btn-sm" onclick="unfreeze('${u.userId}')">解冻</button>`
+              : `<button class="btn btn-warning btn-sm" onclick="freeze('${u.userId}')">冻结</button>`}
+            <button class="btn btn-secondary btn-sm" onclick="openResetModal('${u.userId}')">重置密码</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.userId}')">删除</button>
+          </td>
+        </tr>`).join("");
+    });
+  }
+
+  function changePage(delta) {
+    const np = currentPage + delta;
+    if (np < 1 || np > totalPages) return;
+    loadUsers(np);
+  }
+
+  function freeze(userId) {
+    if (!confirm(`确认冻结用户 ${userId}？`)) return;
+    authFetch(`/api/admin/users/${userId}/freeze`, { method: "PATCH" }).then(d => {
+      if (d.error) { alert(d.error); return; }
+      alert(d.message); loadUsers(currentPage);
+    });
+  }
+
+  function unfreeze(userId) {
+    if (!confirm(`确认解冻用户 ${userId}？`)) return;
+    authFetch(`/api/admin/users/${userId}/unfreeze`, { method: "PATCH" }).then(d => {
+      if (d.error) { alert(d.error); return; }
+      alert(d.message); loadUsers(currentPage);
+    });
+  }
+
+  function deleteUser(userId) {
+    if (!confirm(`确认删除用户 ${userId}？此操作不可撤销！`)) return;
+    authFetch(`/api/admin/users/${userId}`, { method: "DELETE" }).then(d => {
+      if (d.error) { alert(d.error); return; }
+      alert(d.message); loadUsers(currentPage);
+    });
+  }
+
+  function openResetModal(userId) {
+    selectedUserId = userId;
+    document.getElementById("resetUserId").textContent = userId;
+    document.getElementById("newPwd").value = "";
+    document.getElementById("resetMsg").textContent = "";
+    document.getElementById("resetModal").classList.add("open");
+  }
+
+  function doResetPassword() {
+    const newPassword = document.getElementById("newPwd").value;
+    if (!newPassword) { setModalMsg("resetMsg", "请输入新密码", true); return; }
+    authFetch(`/api/admin/users/${selectedUserId}/reset-password`, {
+      method: "PATCH", body: { newPassword }
+    }).then(d => {
+      if (d.error) { setModalMsg("resetMsg", d.error, true); return; }
+      setModalMsg("resetMsg", d.message, false);
+      setTimeout(() => closeModal("resetModal"), 1200);
+    });
+  }
+
+  function viewRecords(userId) {
+    document.getElementById("recordsUserId").textContent = userId;
+    document.getElementById("recordsTable").innerHTML = '<tr><td colspan="3" style="color:#aaa;text-align:center">加载中...</td></tr>';
+    document.getElementById("recordsModal").classList.add("open");
+    authFetch(`/api/admin/stats/user/${userId}/records`).then(d => {
+      if (d.error) { document.getElementById("recordsTable").innerHTML = `<tr><td colspan="3" style="color:red">${d.error}</td></tr>`; return; }
+      if (!d.records.length) {
+        document.getElementById("recordsTable").innerHTML = '<tr><td colspan="3" style="color:#aaa;text-align:center">暂无记录</td></tr>';
+        return;
+      }
+      document.getElementById("recordsTable").innerHTML = d.records.slice().reverse().map(r => `
+        <tr>
+          <td>${r.reward.icon || ""} ${r.reward.name}</td>
+          <td>${(r.reward.value || 0).toLocaleString()}</td>
+          <td>${new Date(r.timestamp).toLocaleString("zh-CN")}</td>
+        </tr>`).join("");
+    });
+  }
+
+  function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+  function setModalMsg(id, msg, isErr) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = "msg " + (isErr ? "err" : "ok");
+  }
+
+  loadUsers(1);
+</script>
+</body>
+</html>

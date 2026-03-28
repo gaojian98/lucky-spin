@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理后台 - 仪表板</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; min-height: 100vh; }
+    .navbar { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 0 24px; display: flex; align-items: center; height: 56px; gap: 8px; flex-wrap: wrap; }
+    .navbar .brand { font-weight: 700; font-size: 18px; margin-right: 16px; }
+    .navbar a { color: rgba(255,255,255,.85); text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 14px; transition: background .2s; }
+    .navbar a:hover, .navbar a.active { background: rgba(255,255,255,.2); color: #fff; }
+    .navbar .spacer { flex: 1; }
+    .navbar .user-info { font-size: 13px; opacity: .9; }
+    .logout-btn { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3); color: #fff; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .logout-btn:hover { background: rgba(255,255,255,.25); }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    h2 { color: #333; margin-bottom: 20px; font-size: 20px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .stat-card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .stat-card .label { color: #888; font-size: 13px; margin-bottom: 8px; }
+    .stat-card .value { font-size: 28px; font-weight: 700; color: #333; }
+    .stat-card .sub { font-size: 12px; color: #aaa; margin-top: 4px; }
+    .stat-card.blue .value { color: #667eea; }
+    .stat-card.green .value { color: #28a745; }
+    .stat-card.orange .value { color: #fd7e14; }
+    .stat-card.red .value { color: #dc3545; }
+    .section { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.06); margin-bottom: 20px; }
+    .section h3 { color: #444; font-size: 16px; margin-bottom: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; }
+    th { background: #f8f9fa; color: #555; font-weight: 600; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 500; }
+    .badge-green { background: #d4edda; color: #155724; }
+    .badge-yellow { background: #fff3cd; color: #856404; }
+    .badge-red { background: #f8d7da; color: #721c24; }
+    .quick-links { display: flex; gap: 12px; flex-wrap: wrap; }
+    .quick-link { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; transition: opacity .2s; }
+    .quick-link:hover { opacity: .85; }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <span class="brand">🎉 幸运转盘管理</span>
+  <a href="/admin/dashboard.html" class="active">仪表板</a>
+  <a href="/admin/users.html">用户管理</a>
+  <a href="/admin/config.html">游戏配置</a>
+  <a href="/admin/stats.html">数据统计</a>
+  <a href="/admin/managers.html" id="navManagers" style="display:none">管理员审核</a>
+  <div class="spacer"></div>
+  <span class="user-info" id="userInfo"></span>
+  <button class="logout-btn" onclick="logout()">退出</button>
+</nav>
+<div class="container">
+  <h2>📊 仪表板</h2>
+  <div class="stats-grid">
+    <div class="stat-card blue"><div class="label">注册用户</div><div class="value" id="totalUsers">-</div><div class="sub">总用户数</div></div>
+    <div class="stat-card red"><div class="label">冻结用户</div><div class="value" id="frozenCount">-</div><div class="sub">被冻结账号</div></div>
+    <div class="stat-card green"><div class="label">总转盘次数</div><div class="value" id="totalSpins">-</div><div class="sub">历史总计</div></div>
+    <div class="stat-card orange"><div class="label">充值总额</div><div class="value" id="totalDeposits">-</div><div class="sub">已批准积分</div></div>
+    <div class="stat-card yellow"><div class="label">待审充值</div><div class="value" id="pendingDeposits">-</div><div class="sub">待处理</div></div>
+  </div>
+
+  <div class="section">
+    <h3>🚀 快速操作</h3>
+    <div class="quick-links">
+      <a href="/admin/users.html" class="quick-link">👥 用户管理</a>
+      <a href="/admin/config.html" class="quick-link">⚙️ 游戏配置</a>
+      <a href="/admin/stats.html" class="quick-link">📈 数据统计</a>
+      <a href="/admin/managers.html" class="quick-link" id="qlManagers" style="display:none">👤 管理员审核</a>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>🏆 近期中奖记录</h3>
+    <table>
+      <thead><tr><th>用户</th><th>奖品</th><th>类型</th><th>价值</th><th>时间</th></tr></thead>
+      <tbody id="recentRecords"><tr><td colspan="5" style="text-align:center;color:#aaa">加载中...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  const API = "";
+  const token = localStorage.getItem("adminToken");
+  const role = localStorage.getItem("adminRole");
+  if (!token) { window.location.href = "/admin/index.html"; }
+
+  document.getElementById("userInfo").textContent = "👤 " + (localStorage.getItem("adminName") || "管理员");
+  if (role === "super") {
+    document.getElementById("navManagers").style.display = "";
+    document.getElementById("qlManagers").style.display = "";
+  }
+
+  function authFetch(url, opts = {}) {
+    opts.headers = opts.headers || {};
+    opts.headers["Authorization"] = "Bearer " + token;
+    return fetch(API + url, opts).then(r => r.json());
+  }
+
+  function logout() {
+    authFetch("/api/admin/logout", { method: "POST" }).finally(() => {
+      localStorage.removeItem("adminToken");
+      localStorage.removeItem("adminRole");
+      localStorage.removeItem("adminName");
+      localStorage.removeItem("adminId");
+      window.location.href = "/admin/index.html";
+    });
+  }
+
+  function loadDashboard() {
+    authFetch("/api/admin/stats/summary").then(d => {
+      if (d.error) { alert(d.error); return; }
+      document.getElementById("totalUsers").textContent = d.totalUsers;
+      document.getElementById("frozenCount").textContent = d.frozenCount;
+      document.getElementById("totalSpins").textContent = d.totalSpins;
+      document.getElementById("totalDeposits").textContent = (d.totalDeposits || 0).toLocaleString();
+      document.getElementById("pendingDeposits").textContent = d.pendingDeposits;
+    });
+
+    authFetch("/api/admin/stats/records?page=1&pageSize=10").then(d => {
+      if (d.error) { return; }
+      const tbody = document.getElementById("recentRecords");
+      if (!d.items || d.items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#aaa">暂无记录</td></tr>';
+        return;
+      }
+      tbody.innerHTML = d.items.map(r => `
+        <tr>
+          <td>${r.userId}</td>
+          <td>${r.reward.icon || ""} ${r.reward.name}</td>
+          <td><span class="badge badge-${r.reward.rarity === 'legendary' ? 'red' : r.reward.rarity === 'epic' ? 'yellow' : 'green'}">${r.reward.rarity}</span></td>
+          <td>${(r.reward.value || 0).toLocaleString()}</td>
+          <td>${new Date(r.timestamp).toLocaleString("zh-CN")}</td>
+        </tr>`).join("");
+    });
+  }
+
+  loadDashboard();
+</script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理后台 - 登录</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #667eea, #764ba2); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,.3); padding: 40px; width: 420px; max-width: 95vw; }
+    h1 { text-align: center; color: #333; margin-bottom: 8px; font-size: 22px; }
+    .subtitle { text-align: center; color: #888; margin-bottom: 28px; font-size: 14px; }
+    .tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 24px; }
+    .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; color: #888; font-weight: 500; transition: .2s; }
+    .tab.active { color: #667eea; border-bottom: 2px solid #667eea; margin-bottom: -2px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; color: #555; font-size: 14px; margin-bottom: 6px; }
+    input { width: 100%; padding: 11px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; outline: none; transition: border .2s; }
+    input:focus { border-color: #667eea; }
+    .btn { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: opacity .2s; margin-top: 8px; }
+    .btn:hover { opacity: .9; }
+    .error { color: #dc3545; font-size: 13px; margin-top: 10px; text-align: center; }
+    .success { color: #28a745; font-size: 13px; margin-top: 10px; text-align: center; }
+    #panelApply { display: none; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>🎉 幸运转盘</h1>
+  <p class="subtitle">管理后台</p>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('login')">登录</div>
+    <div class="tab" onclick="switchTab('apply')">申请管理员</div>
+  </div>
+
+  <!-- Login Panel -->
+  <div id="panelLogin">
+    <div class="form-group">
+      <label>账号</label>
+      <input type="text" id="loginUser" placeholder="管理员账号" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>密码</label>
+      <input type="password" id="loginPass" placeholder="密码" autocomplete="current-password">
+    </div>
+    <button class="btn" onclick="doLogin()">登录</button>
+    <div id="loginMsg"></div>
+  </div>
+
+  <!-- Apply Panel -->
+  <div id="panelApply">
+    <div class="form-group">
+      <label>申请账号</label>
+      <input type="text" id="applyUser" placeholder="设置账号名">
+    </div>
+    <div class="form-group">
+      <label>显示名称</label>
+      <input type="text" id="applyDisplay" placeholder="管理员显示名称（可选）">
+    </div>
+    <div class="form-group">
+      <label>密码</label>
+      <input type="password" id="applyPass" placeholder="设置密码">
+    </div>
+    <div class="form-group">
+      <label>确认密码</label>
+      <input type="password" id="applyPass2" placeholder="再次输入密码">
+    </div>
+    <button class="btn" onclick="doApply()">提交申请</button>
+    <div id="applyMsg"></div>
+  </div>
+</div>
+
+<script>
+  const API = "";
+
+  if (localStorage.getItem("adminToken")) {
+    window.location.href = "/admin/dashboard.html";
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll(".tab").forEach((el, i) => {
+      el.classList.toggle("active", (tab === "login" && i === 0) || (tab === "apply" && i === 1));
+    });
+    document.getElementById("panelLogin").style.display = tab === "login" ? "" : "none";
+    document.getElementById("panelApply").style.display = tab === "apply" ? "" : "none";
+  }
+
+  function setMsg(id, msg, isError) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = isError ? "error" : "success";
+  }
+
+  function doLogin() {
+    const username = document.getElementById("loginUser").value.trim();
+    const password = document.getElementById("loginPass").value;
+    if (!username || !password) { setMsg("loginMsg", "请输入账号和密码", true); return; }
+    fetch(API + "/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    }).then(r => r.json()).then(d => {
+      if (d.error) { setMsg("loginMsg", d.error, true); return; }
+      localStorage.setItem("adminToken", d.token);
+      localStorage.setItem("adminRole", d.role);
+      localStorage.setItem("adminName", d.displayName);
+      localStorage.setItem("adminId", d.adminId);
+      window.location.href = "/admin/dashboard.html";
+    }).catch(() => setMsg("loginMsg", "连接服务器失败", true));
+  }
+
+  function doApply() {
+    const username = document.getElementById("applyUser").value.trim();
+    const displayName = document.getElementById("applyDisplay").value.trim();
+    const password = document.getElementById("applyPass").value;
+    const password2 = document.getElementById("applyPass2").value;
+    if (!username || !password) { setMsg("applyMsg", "请填写账号和密码", true); return; }
+    if (password !== password2) { setMsg("applyMsg", "两次密码不一致", true); return; }
+    fetch(API + "/api/admin/apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password, displayName })
+    }).then(r => r.json()).then(d => {
+      if (d.error) { setMsg("applyMsg", d.error, true); return; }
+      setMsg("applyMsg", d.message, false);
+    }).catch(() => setMsg("applyMsg", "连接服务器失败", true));
+  }
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      const tab = document.getElementById("panelApply").style.display === "none" ? "login" : "apply";
+      if (tab === "login") doLogin(); else doApply();
+    }
+  });
+</script>
+</body>
+</html>
