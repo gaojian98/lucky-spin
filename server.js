@@ -603,15 +603,20 @@ app.get("/admin", adminRateLimit, (req, res) => {
   });
 });
 
-// Block direct access to sensitive server-side files
-const SENSITIVE_FILES = new Set(["/server.js", "/package.json", "/package-lock.json"]);
-app.use((req, res, next) => {
-  if (SENSITIVE_FILES.has(req.path)) return res.status(403).send("Forbidden");
-  next();
-});
+// Serve admin sub-pages from the admin/ subdirectory only
+app.use("/admin", express.static(path.join(__dirname, "admin")));
 
-// Static files served last
-app.use(express.static(__dirname, { index: "index.html" }));
+// Serve the main game pages explicitly (not the whole source root)
+app.get(["/", "/index.html"], (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"), err => {
+    if (err) res.status(404).send("Not Found");
+  });
+});
+app.get("/admin.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "admin.html"), err => {
+    if (err) res.status(404).send("Not Found");
+  });
+});
 
 app.listen(PORT, () => {
   console.log("\n🎉 ========================================");
