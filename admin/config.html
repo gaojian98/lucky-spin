@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理后台 - 游戏配置</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; min-height: 100vh; }
+    .navbar { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 0 24px; display: flex; align-items: center; height: 56px; gap: 8px; flex-wrap: wrap; }
+    .navbar .brand { font-weight: 700; font-size: 18px; margin-right: 16px; }
+    .navbar a { color: rgba(255,255,255,.85); text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 14px; transition: background .2s; }
+    .navbar a:hover, .navbar a.active { background: rgba(255,255,255,.2); color: #fff; }
+    .navbar .spacer { flex: 1; }
+    .logout-btn { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3); color: #fff; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 24px; }
+    h2 { color: #333; margin-bottom: 20px; }
+    .section { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 24px; margin-bottom: 24px; }
+    .section h3 { color: #444; font-size: 16px; margin-bottom: 18px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; }
+    th { background: #f8f9fa; color: #555; font-weight: 600; }
+    input[type="text"], input[type="number"], select, textarea { padding: 8px 10px; border: 1px solid #ddd; border-radius: 7px; font-size: 14px; outline: none; }
+    input:focus, select:focus, textarea:focus { border-color: #667eea; }
+    .btn { padding: 9px 18px; border: none; border-radius: 7px; cursor: pointer; font-size: 14px; font-weight: 500; transition: opacity .2s; }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: #667eea; color: #fff; }
+    .btn-danger { background: #dc3545; color: #fff; }
+    .btn-success { background: #28a745; color: #fff; }
+    .btn-secondary { background: #6c757d; color: #fff; }
+    .btn-sm { padding: 5px 10px; font-size: 13px; }
+    .action-bar { display: flex; gap: 10px; margin-top: 16px; align-items: center; }
+    .msg { font-size: 13px; margin-left: auto; }
+    .msg.err { color: #dc3545; }
+    .msg.ok { color: #28a745; }
+    .weight-total { font-size: 13px; color: #888; margin-top: 8px; }
+    textarea { width: 100%; min-height: 120px; resize: vertical; }
+    .rarity-option { padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+    .hint { font-size: 12px; color: #aaa; margin-top: 4px; }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <span class="brand">🎉 幸运转盘管理</span>
+  <a href="/admin/dashboard.html">仪表板</a>
+  <a href="/admin/users.html">用户管理</a>
+  <a href="/admin/config.html" class="active">游戏配置</a>
+  <a href="/admin/stats.html">数据统计</a>
+  <a href="/admin/managers.html" id="navManagers" style="display:none">管理员审核</a>
+  <div class="spacer"></div>
+  <span style="color:rgba(255,255,255,.9);font-size:13px" id="userInfo"></span>
+  <button class="logout-btn" onclick="logout()">退出</button>
+</nav>
+<div class="container">
+  <h2>⚙️ 游戏配置</h2>
+
+  <!-- Rewards Config -->
+  <div class="section">
+    <h3>🎁 奖品与概率配置</h3>
+    <table id="rewardsTable">
+      <thead>
+        <tr><th>#</th><th>图标</th><th>奖品名称</th><th>类型</th><th>价值</th><th>权重</th><th>稀有度</th><th>操作</th></tr>
+      </thead>
+      <tbody id="rewardsBody"></tbody>
+    </table>
+    <div class="weight-total" id="weightTotal"></div>
+    <div class="action-bar">
+      <button class="btn btn-success btn-sm" onclick="addReward()">➕ 添加奖品</button>
+      <button class="btn btn-primary" onclick="saveRewards()">💾 保存奖品配置</button>
+      <span class="msg" id="rewardsMsg"></span>
+    </div>
+    <p class="hint">提示：权重越大，中奖概率越高。所有奖品权重之和决定各奖品的相对概率。</p>
+  </div>
+
+  <!-- Description Config -->
+  <div class="section">
+    <h3>📝 游戏说明</h3>
+    <textarea id="gameDesc" placeholder="输入游戏说明..."></textarea>
+    <div class="action-bar">
+      <button class="btn btn-primary" onclick="saveDescription()">💾 保存说明</button>
+      <span class="msg" id="descMsg"></span>
+    </div>
+  </div>
+
+  <!-- Payment Accounts (super admin only) -->
+  <div class="section" id="paymentSection" style="display:none">
+    <h3>💳 收款账号管理 <small style="color:#888;font-size:13px">（仅超级管理员）</small></h3>
+    <table>
+      <thead><tr><th>类型</th><th>名称</th><th>账号</th><th>银行</th><th>创建时间</th><th>操作</th></tr></thead>
+      <tbody id="payTable"><tr><td colspan="6" style="text-align:center;color:#aaa;padding:16px">加载中...</td></tr></tbody>
+    </table>
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div>
+        <label style="font-size:13px;color:#555;display:block;margin-bottom:4px">类型</label>
+        <select id="payType">
+          <option value="bank">🏦 银行卡</option>
+          <option value="momo">📱 MoMo</option>
+          <option value="zalo">💬 ZaloPay</option>
+          <option value="other">其他</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:13px;color:#555;display:block;margin-bottom:4px">名称</label>
+        <input type="text" id="payName" placeholder="账号名称" style="width:150px">
+      </div>
+      <div>
+        <label style="font-size:13px;color:#555;display:block;margin-bottom:4px">账号</label>
+        <input type="text" id="payAccount" placeholder="账号/卡号" style="width:200px">
+      </div>
+      <div>
+        <label style="font-size:13px;color:#555;display:block;margin-bottom:4px">银行（可选）</label>
+        <input type="text" id="payBank" placeholder="银行名称" style="width:150px">
+      </div>
+      <button class="btn btn-success" onclick="addPayAccount()">添加</button>
+      <span class="msg" id="payMsg"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = "";
+  const token = localStorage.getItem("adminToken");
+  const role = localStorage.getItem("adminRole");
+  if (!token) { window.location.href = "/admin/index.html"; }
+  document.getElementById("userInfo").textContent = "👤 " + (localStorage.getItem("adminName") || "管理员");
+  if (role === "super") {
+    document.getElementById("navManagers").style.display = "";
+    document.getElementById("paymentSection").style.display = "";
+  }
+
+  let rewards = [];
+
+  function authFetch(url, opts = {}) {
+    opts.headers = opts.headers || {};
+    opts.headers["Authorization"] = "Bearer " + token;
+    if (opts.body && typeof opts.body === "object") {
+      opts.headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(opts.body);
+    }
+    return fetch(API + url, opts).then(r => r.json());
+  }
+
+  function logout() {
+    authFetch("/api/admin/logout", { method: "POST" }).finally(() => {
+      localStorage.clear(); window.location.href = "/admin/index.html";
+    });
+  }
+
+  function loadConfig() {
+    authFetch("/api/admin/config").then(d => {
+      if (d.error) { alert(d.error); return; }
+      rewards = d.rewards || [];
+      renderRewards();
+      document.getElementById("gameDesc").value = d.description || "";
+    });
+  }
+
+  function renderRewards() {
+    const totalWeight = rewards.reduce((s, r) => s + (Number(r.weight) || 0), 0);
+    document.getElementById("weightTotal").textContent = `总权重: ${totalWeight.toFixed(2)}，各奖品概率如下所示。`;
+    const rarityOptions = ["legendary", "epic", "rare", "common"].map(r => `<option value="${r}">${r}</option>`).join("");
+    const typeOptions = ["points", "cash", "iphone", "airpods", "other"].map(t => `<option value="${t}">${t}</option>`).join("");
+    document.getElementById("rewardsBody").innerHTML = rewards.map((r, i) => {
+      const pct = totalWeight > 0 ? ((r.weight / totalWeight) * 100).toFixed(2) : "0.00";
+      return `<tr>
+        <td>${i + 1}</td>
+        <td><input type="text" value="${r.icon || ""}" style="width:60px" onchange="rewards[${i}].icon=this.value"></td>
+        <td><input type="text" value="${r.name || ""}" style="width:140px" onchange="rewards[${i}].name=this.value"></td>
+        <td><select onchange="rewards[${i}].type=this.value">${typeOptions.replace(`value="${r.type}"`, `value="${r.type}" selected`)}</select></td>
+        <td><input type="number" value="${r.value || 0}" style="width:100px" onchange="rewards[${i}].value=Number(this.value)"></td>
+        <td>
+          <input type="number" step="0.01" value="${r.weight || 0}" style="width:80px" onchange="rewards[${i}].weight=Number(this.value);renderRewards()">
+          <span style="font-size:12px;color:#aaa;margin-left:4px">${pct}%</span>
+        </td>
+        <td><select onchange="rewards[${i}].rarity=this.value">${rarityOptions.replace(`value="${r.rarity}"`, `value="${r.rarity}" selected`)}</select></td>
+        <td><button class="btn btn-danger btn-sm" onclick="removeReward(${i})">删除</button></td>
+      </tr>`;
+    }).join("");
+  }
+
+  function addReward() {
+    rewards.push({ type: "points", name: "新奖品", icon: "🎁", value: 1000, weight: 1, rarity: "common", segment: rewards.length });
+    renderRewards();
+  }
+
+  function removeReward(i) {
+    if (!confirm("确认删除该奖品？")) return;
+    rewards.splice(i, 1);
+    rewards.forEach((r, idx) => r.segment = idx);
+    renderRewards();
+  }
+
+  function saveRewards() {
+    if (rewards.length === 0) { setMsg("rewardsMsg", "至少需要一个奖品", true); return; }
+    authFetch("/api/admin/config/rewards", { method: "PUT", body: { rewards } }).then(d => {
+      if (d.error) { setMsg("rewardsMsg", d.error, true); return; }
+      setMsg("rewardsMsg", "✅ 奖品配置已保存", false);
+    });
+  }
+
+  function saveDescription() {
+    const description = document.getElementById("gameDesc").value.trim();
+    if (!description) { setMsg("descMsg", "请输入游戏说明", true); return; }
+    authFetch("/api/admin/config/description", { method: "PUT", body: { description } }).then(d => {
+      if (d.error) { setMsg("descMsg", d.error, true); return; }
+      setMsg("descMsg", "✅ 游戏说明已保存", false);
+    });
+  }
+
+  function loadPayAccounts() {
+    authFetch("/api/admin/payment-accounts").then(d => {
+      if (d.error) { return; }
+      const tbody = document.getElementById("payTable");
+      if (!d.items.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#aaa;padding:16px">暂无收款账号</td></tr>';
+        return;
+      }
+      tbody.innerHTML = d.items.map(a => `<tr>
+        <td>${a.type}</td><td>${a.name}</td><td>${a.account}</td><td>${a.bank || "-"}</td>
+        <td>${new Date(a.createdAt).toLocaleDateString("zh-CN")}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deletePayAccount(${a.id})">删除</button></td>
+      </tr>`).join("");
+    });
+  }
+
+  function addPayAccount() {
+    const type = document.getElementById("payType").value;
+    const name = document.getElementById("payName").value.trim();
+    const account = document.getElementById("payAccount").value.trim();
+    const bank = document.getElementById("payBank").value.trim();
+    if (!name || !account) { setMsg("payMsg", "请填写名称和账号", true); return; }
+    authFetch("/api/admin/payment-accounts", { method: "POST", body: { type, name, account, bank } }).then(d => {
+      if (d.error) { setMsg("payMsg", d.error, true); return; }
+      setMsg("payMsg", "✅ 已添加", false);
+      document.getElementById("payName").value = "";
+      document.getElementById("payAccount").value = "";
+      document.getElementById("payBank").value = "";
+      loadPayAccounts();
+    });
+  }
+
+  function deletePayAccount(id) {
+    if (!confirm("确认删除该收款账号？")) return;
+    authFetch(`/api/admin/payment-accounts/${id}`, { method: "DELETE" }).then(d => {
+      if (d.error) { alert(d.error); return; }
+      loadPayAccounts();
+    });
+  }
+
+  function setMsg(id, msg, isErr) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = "msg " + (isErr ? "err" : "ok");
+    if (!isErr) setTimeout(() => el.textContent = "", 3000);
+  }
+
+  loadConfig();
+  if (role === "super") loadPayAccounts();
+</script>
+</body>
+</html>

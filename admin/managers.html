@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理后台 - 管理员审核</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; min-height: 100vh; }
+    .navbar { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 0 24px; display: flex; align-items: center; height: 56px; gap: 8px; flex-wrap: wrap; }
+    .navbar .brand { font-weight: 700; font-size: 18px; margin-right: 16px; }
+    .navbar a { color: rgba(255,255,255,.85); text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 14px; transition: background .2s; }
+    .navbar a:hover, .navbar a.active { background: rgba(255,255,255,.2); color: #fff; }
+    .navbar .spacer { flex: 1; }
+    .logout-btn { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3); color: #fff; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    h2 { color: #333; margin-bottom: 8px; }
+    .section { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); overflow: hidden; margin-bottom: 24px; }
+    .section-header { padding: 16px 20px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; }
+    .section-header h3 { color: #444; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 11px 14px; text-align: left; border-bottom: 1px solid #f0f0f0; }
+    th { background: #f8f9fa; color: #555; font-weight: 600; }
+    tr:hover { background: #fafafa; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+    .badge-green { background: #d4edda; color: #155724; }
+    .badge-yellow { background: #fff3cd; color: #856404; }
+    .badge-red { background: #f8d7da; color: #721c24; }
+    .badge-blue { background: #cce5ff; color: #004085; }
+    .btn { padding: 7px 14px; border: none; border-radius: 7px; cursor: pointer; font-size: 13px; font-weight: 500; margin: 2px; }
+    .btn:hover { opacity: .85; }
+    .btn-success { background: #28a745; color: #fff; }
+    .btn-danger { background: #dc3545; color: #fff; }
+    .btn-secondary { background: #6c757d; color: #fff; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.4); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #fff; border-radius: 12px; padding: 28px; width: 420px; max-width: 95vw; }
+    .modal h3 { margin-bottom: 16px; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; color: #555; font-size: 13px; margin-bottom: 5px; }
+    input { width: 100%; padding: 9px 12px; border: 1px solid #ddd; border-radius: 7px; font-size: 14px; outline: none; }
+    input:focus { border-color: #667eea; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+    .msg { font-size: 13px; margin-top: 8px; }
+    .msg.err { color: #dc3545; }
+    .msg.ok { color: #28a745; }
+    .no-access { text-align: center; padding: 60px 20px; color: #dc3545; font-size: 18px; }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <span class="brand">🎉 幸运转盘管理</span>
+  <a href="/admin/dashboard.html">仪表板</a>
+  <a href="/admin/users.html">用户管理</a>
+  <a href="/admin/config.html">游戏配置</a>
+  <a href="/admin/stats.html">数据统计</a>
+  <a href="/admin/managers.html" class="active">管理员审核</a>
+  <div class="spacer"></div>
+  <span style="color:rgba(255,255,255,.9);font-size:13px" id="userInfo"></span>
+  <button class="logout-btn" onclick="logout()">退出</button>
+</nav>
+<div class="container">
+  <h2>👤 管理员管理</h2>
+  <p style="color:#888;font-size:14px;margin-bottom:20px">仅超级管理员可访问此页面</p>
+
+  <div id="accessDenied" class="no-access" style="display:none">
+    🚫 权限不足，仅超级管理员可访问此页面
+  </div>
+
+  <div id="mainContent">
+    <!-- Applications -->
+    <div class="section">
+      <div class="section-header">
+        <h3>📋 管理员申请列表</h3>
+        <button class="btn btn-secondary" onclick="loadApplications()">刷新</button>
+      </div>
+      <table>
+        <thead><tr><th>申请账号</th><th>显示名称</th><th>申请时间</th><th>状态</th><th>审核时间</th><th>审核人</th><th>操作</th></tr></thead>
+        <tbody id="appTable"><tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px">加载中...</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- Managers list -->
+    <div class="section">
+      <div class="section-header">
+        <h3>👥 管理员列表</h3>
+        <button class="btn btn-secondary" onclick="loadManagers()">刷新</button>
+      </div>
+      <table>
+        <thead><tr><th>账号</th><th>显示名称</th><th>角色</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+        <tbody id="managerTable"><tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px">加载中...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal-overlay" id="resetModal">
+  <div class="modal">
+    <h3>🔑 重置管理员密码</h3>
+    <p style="color:#888;font-size:14px;margin-bottom:14px">为 <strong id="resetAdminId"></strong> 重置密码</p>
+    <div class="form-group">
+      <label>新密码</label>
+      <input type="password" id="newAdminPwd" placeholder="输入新密码">
+    </div>
+    <div id="resetAdminMsg" class="msg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('resetModal')">取消</button>
+      <button class="btn btn-success" onclick="doResetAdminPwd()">确认重置</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = "";
+  const token = localStorage.getItem("adminToken");
+  const role = localStorage.getItem("adminRole");
+  if (!token) { window.location.href = "/admin/index.html"; }
+  document.getElementById("userInfo").textContent = "👤 " + (localStorage.getItem("adminName") || "管理员");
+
+  if (role !== "super") {
+    document.getElementById("accessDenied").style.display = "";
+    document.getElementById("mainContent").style.display = "none";
+  } else {
+    loadApplications();
+    loadManagers();
+  }
+
+  function authFetch(url, opts = {}) {
+    opts.headers = opts.headers || {};
+    opts.headers["Authorization"] = "Bearer " + token;
+    if (opts.body && typeof opts.body === "object") {
+      opts.headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(opts.body);
+    }
+    return fetch(API + url, opts).then(r => r.json());
+  }
+
+  function logout() {
+    authFetch("/api/admin/logout", { method: "POST" }).finally(() => {
+      localStorage.clear(); window.location.href = "/admin/index.html";
+    });
+  }
+
+  function loadApplications() {
+    authFetch("/api/admin/applications").then(d => {
+      if (d.error) { alert(d.error); return; }
+      const tbody = document.getElementById("appTable");
+      if (!d.items.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px">暂无申请</td></tr>';
+        return;
+      }
+      tbody.innerHTML = d.items.map(a => {
+        const statusMap = { pending: '<span class="badge badge-yellow">⏳ 待审核</span>', approved: '<span class="badge badge-green">✅ 已批准</span>', rejected: '<span class="badge badge-red">❌ 已拒绝</span>' };
+        return `<tr>
+          <td><strong>${a.username}</strong></td>
+          <td>${a.displayName || "-"}</td>
+          <td>${new Date(a.createdAt).toLocaleString("zh-CN")}</td>
+          <td>${statusMap[a.status] || a.status}</td>
+          <td>${a.reviewedAt ? new Date(a.reviewedAt).toLocaleString("zh-CN") : "-"}</td>
+          <td>${a.reviewedBy || "-"}</td>
+          <td>
+            ${a.status === "pending" ? `
+              <button class="btn btn-success" onclick="approveApp(${a.id})">✅ 批准</button>
+              <button class="btn btn-danger" onclick="rejectApp(${a.id})">❌ 拒绝</button>
+            ` : '<span style="color:#aaa;font-size:13px">已处理</span>'}
+          </td>
+        </tr>`;
+      }).join("");
+    });
+  }
+
+  function approveApp(appId) {
+    if (!confirm("确认批准该申请？")) return;
+    authFetch(`/api/admin/applications/${appId}/approve`, { method: "PATCH" }).then(d => {
+      if (d.error) { alert(d.error); return; }
+      alert(d.message); loadApplications(); loadManagers();
+    });
+  }
+
+  function rejectApp(appId) {
+    if (!confirm("确认拒绝该申请？")) return;
+    authFetch(`/api/admin/applications/${appId}/reject`, { method: "PATCH" }).then(d => {
+      if (d.error) { alert(d.error); return; }
+      alert(d.message); loadApplications();
+    });
+  }
+
+  function loadManagers() {
+    authFetch("/api/admin/managers").then(d => {
+      if (d.error) { alert(d.error); return; }
+      const tbody = document.getElementById("managerTable");
+      tbody.innerHTML = d.items.map(m => {
+        const roleMap = { super: '<span class="badge badge-red">👑 超级管理员</span>', admin: '<span class="badge badge-blue">👤 管理员</span>' };
+        const statusBadge = m.status === "active" ? '<span class="badge badge-green">正常</span>' : '<span class="badge badge-red">禁用</span>';
+        const isSelf = m.adminId === (localStorage.getItem("adminId") || "");
+        return `<tr>
+          <td><strong>${m.adminId}</strong></td>
+          <td>${m.displayName || m.adminId}</td>
+          <td>${roleMap[m.role] || m.role}</td>
+          <td>${statusBadge}</td>
+          <td>${m.createdAt ? new Date(m.createdAt).toLocaleDateString("zh-CN") : "-"}</td>
+          <td>
+            ${m.role !== "super" ? `
+              <button class="btn btn-secondary" onclick="openResetAdminModal('${m.adminId}')">重置密码</button>
+              <button class="btn btn-danger" onclick="deleteManager('${m.adminId}')">删除</button>
+            ` : '<span style="color:#aaa;font-size:13px">超级管理员</span>'}
+          </td>
+        </tr>`;
+      }).join("");
+    });
+  }
+
+  let selectedManagerId = "";
+  function openResetAdminModal(adminId) {
+    selectedManagerId = adminId;
+    document.getElementById("resetAdminId").textContent = adminId;
+    document.getElementById("newAdminPwd").value = "";
+    document.getElementById("resetAdminMsg").textContent = "";
+    document.getElementById("resetModal").classList.add("open");
+  }
+
+  function doResetAdminPwd() {
+    const newPassword = document.getElementById("newAdminPwd").value;
+    if (!newPassword) { setMsg("resetAdminMsg", "请输入新密码", true); return; }
+    authFetch(`/api/admin/managers/${selectedManagerId}/reset-password`, {
+      method: "PATCH", body: { newPassword }
+    }).then(d => {
+      if (d.error) { setMsg("resetAdminMsg", d.error, true); return; }
+      setMsg("resetAdminMsg", d.message, false);
+      setTimeout(() => closeModal("resetModal"), 1200);
+    });
+  }
+
+  function deleteManager(adminId) {
+    if (!confirm(`确认删除管理员 ${adminId}？此操作不可撤销！`)) return;
+    authFetch(`/api/admin/managers/${adminId}`, { method: "DELETE" }).then(d => {
+      if (d.error) { alert(d.error); return; }
+      alert(d.message); loadManagers();
+    });
+  }
+
+  function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+  function setMsg(id, msg, isErr) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = "msg " + (isErr ? "err" : "ok");
+  }
+</script>
+</body>
+</html>
