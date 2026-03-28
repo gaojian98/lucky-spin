@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const crypto = require("crypto");
 const path = require("path");
+const rateLimit = require("express-rate-limit");
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -578,26 +579,17 @@ app.get("/recharge/history/:userId", (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-// Simple in-memory rate limiter for the admin page route
-const adminPageRequests = new Map();
-const ADMIN_RATE_LIMIT = 60;
-const ADMIN_RATE_WINDOW_MS = 60000;
-
-function adminRateLimit(req, res, next) {
-  const ip = req.ip || (req.connection && req.connection.remoteAddress) || "unknown";
-  const now = Date.now();
-  const record = adminPageRequests.get(ip);
-  if (record && now < record.resetTime) {
-    if (record.count >= ADMIN_RATE_LIMIT) return res.status(429).send("Too Many Requests");
-    record.count++;
-  } else {
-    adminPageRequests.set(ip, { count: 1, resetTime: now + ADMIN_RATE_WINDOW_MS });
-  }
-  next();
-}
+// Rate limiter for static page routes (prevents DoS)
+const pageRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: "Too Many Requests"
+});
 
 // Serve admin login page for /admin and /admin/
-app.get("/admin", adminRateLimit, (req, res) => {
+app.get("/admin", pageRateLimit, (req, res) => {
   res.sendFile(path.join(__dirname, "admin", "index.html"), err => {
     if (err) res.status(404).send("Admin page not found");
   });
@@ -607,12 +599,12 @@ app.get("/admin", adminRateLimit, (req, res) => {
 app.use("/admin", express.static(path.join(__dirname, "admin")));
 
 // Serve the main game pages explicitly (not the whole source root)
-app.get(["/", "/index.html"], (req, res) => {
+app.get(["/", "/index.html"], pageRateLimit, (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"), err => {
     if (err) res.status(404).send("Not Found");
   });
 });
-app.get("/admin.html", (req, res) => {
+app.get("/admin.html", pageRateLimit, (req, res) => {
   res.sendFile(path.join(__dirname, "admin.html"), err => {
     if (err) res.status(404).send("Not Found");
   });
