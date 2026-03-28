@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>幸运转盘 - 游戏配置</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; }
+    .topbar {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar h1 { font-size: 1.2rem; }
+    .topbar .nav a {
+      color: white;
+      text-decoration: none;
+      margin-left: 18px;
+      font-size: 0.9rem;
+      opacity: 0.85;
+    }
+    .topbar .nav a:hover { opacity: 1; }
+    .topbar .logout {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-left: 18px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      margin-bottom: 24px;
+    }
+    .section h2 { font-size: 1.1rem; margin-bottom: 16px; color: #444; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+    th { background: #f9f9f9; font-weight: 600; color: #555; }
+    button { padding: 6px 14px; margin: 2px; cursor: pointer; border: none; border-radius: 6px; font-size: 0.85rem; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-save { background: #28a745; color: white; }
+    .btn-danger { background: #dc3545; color: white; }
+    .btn-edit { background: #ffc107; color: #333; }
+    input[type="text"], input[type="number"], input[type="email"] {
+      padding: 7px 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      width: 100%;
+    }
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      min-height: 120px;
+      resize: vertical;
+      font-family: Arial, sans-serif;
+    }
+    .form-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 14px; }
+    .form-field { display: flex; flex-direction: column; gap: 4px; }
+    .form-field label { font-size: 0.85rem; color: #555; font-weight: bold; }
+    .no-data { text-align: center; color: #aaa; padding: 24px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>🎉 幸运转盘 - 游戏配置</h1>
+    <div class="nav">
+      <a href="/admin/dashboard.html">仪表板</a>
+      <a href="/admin/users.html">用户管理</a>
+      <a href="/admin/managers.html">管理员审核</a>
+      <a href="/admin/config.html">游戏配置</a>
+      <a href="/admin/stats.html">数据统计</a>
+      <button class="logout" onclick="logout()">退出登录</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- 奖品配置 -->
+    <div class="section">
+      <h2>🎁 奖品配置</h2>
+      <div id="rewardsTable"><p class="no-data">加载中...</p></div>
+      <div style="margin-top:14px;">
+        <strong>添加新奖品：</strong>
+        <div class="form-row">
+          <div class="form-field">
+            <label>图标</label>
+            <input type="text" id="newIcon" placeholder="🎁" style="width:70px;">
+          </div>
+          <div class="form-field">
+            <label>奖品名称</label>
+            <input type="text" id="newName" placeholder="奖品名称" style="width:160px;">
+          </div>
+          <div class="form-field">
+            <label>类型</label>
+            <input type="text" id="newType" placeholder="points/cash/item" style="width:120px;">
+          </div>
+          <div class="form-field">
+            <label>价值</label>
+            <input type="number" id="newValue" placeholder="0" style="width:100px;">
+          </div>
+          <div class="form-field">
+            <label>权重（概率）</label>
+            <input type="number" id="newWeight" placeholder="10" style="width:100px;" step="0.01">
+          </div>
+          <button class="btn-primary" onclick="addReward()">➕ 添加</button>
+        </div>
+      </div>
+      <div style="margin-top:16px;">
+        <button class="btn-save" onclick="saveRewards()">💾 保存奖品配置</button>
+      </div>
+    </div>
+
+    <!-- 游戏说明 -->
+    <div class="section">
+      <h2>📝 游戏说明</h2>
+      <textarea id="gameDesc" placeholder="输入游戏说明..."></textarea>
+      <div style="margin-top:12px;">
+        <button class="btn-save" onclick="saveDescription()">💾 保存游戏说明</button>
+      </div>
+    </div>
+
+    <!-- 收款账号管理 -->
+    <div class="section">
+      <h2>💳 收款账号管理</h2>
+      <div id="paymentList"><p class="no-data">加载中...</p></div>
+      <div style="margin-top:14px;">
+        <strong>添加新账号：</strong>
+        <div class="form-row">
+          <div class="form-field">
+            <label>账号名称</label>
+            <input type="text" id="paName" placeholder="如：主账号" style="width:130px;">
+          </div>
+          <div class="form-field">
+            <label>银行/平台</label>
+            <input type="text" id="paBank" placeholder="如：招商银行" style="width:130px;">
+          </div>
+          <div class="form-field">
+            <label>账号</label>
+            <input type="text" id="paAccount" placeholder="卡号或账号" style="width:180px;">
+          </div>
+          <div class="form-field">
+            <label>持有人</label>
+            <input type="text" id="paHolder" placeholder="姓名" style="width:120px;">
+          </div>
+          <button class="btn-primary" onclick="addPaymentAccount()">➕ 添加</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const adminData = JSON.parse(sessionStorage.getItem('adminUser') || 'null');
+    if (!adminData) {
+      window.location.href = '/admin';
+    }
+
+    function logout() {
+      sessionStorage.removeItem('adminUser');
+      window.location.href = '/admin';
+    }
+
+    let rewards = [];
+
+    function loadRewards() {
+      fetch('/api/admin/config/rewards')
+        .then(r => r.json())
+        .then(d => {
+          rewards = d.rewards || [];
+          renderRewards();
+        })
+        .catch(() => {
+          document.getElementById('rewardsTable').innerHTML = '<p class="no-data" style="color:red;">❌ 无法加载奖品配置</p>';
+        });
+    }
+
+    function renderRewards() {
+      if (rewards.length === 0) {
+        document.getElementById('rewardsTable').innerHTML = '<p class="no-data">暂无奖品</p>';
+        return;
+      }
+      const totalWeight = rewards.reduce((s, r) => s + Number(r.weight), 0);
+      let html = '<table><tr><th>图标</th><th>名称</th><th>类型</th><th>价值</th><th>权重</th><th>概率</th><th>操作</th></tr>';
+      rewards.forEach((r, i) => {
+        const pct = totalWeight > 0 ? ((Number(r.weight) / totalWeight) * 100).toFixed(2) : '0.00';
+        html += `<tr id="row-${i}">
+          <td><input type="text" value="${r.icon || ''}" id="icon-${i}" style="width:60px;"></td>
+          <td><input type="text" value="${r.name}" id="name-${i}" style="width:140px;"></td>
+          <td><input type="text" value="${r.type}" id="type-${i}" style="width:100px;"></td>
+          <td><input type="number" value="${r.value}" id="value-${i}" style="width:90px;"></td>
+          <td><input type="number" value="${r.weight}" id="weight-${i}" style="width:80px;" step="0.01" onchange="renderRewards()"></td>
+          <td>${pct}%</td>
+          <td><button class="btn-danger" onclick="removeReward(${i})">🗑️ 删除</button></td>
+        </tr>`;
+      });
+      html += '</table>';
+      document.getElementById('rewardsTable').innerHTML = html;
+    }
+
+    function collectRewards() {
+      return rewards.map((r, i) => ({
+        ...r,
+        icon: document.getElementById('icon-' + i)?.value || r.icon,
+        name: document.getElementById('name-' + i)?.value || r.name,
+        type: document.getElementById('type-' + i)?.value || r.type,
+        value: Number(document.getElementById('value-' + i)?.value || r.value),
+        weight: Number(document.getElementById('weight-' + i)?.value || r.weight)
+      }));
+    }
+
+    function addReward() {
+      const icon = document.getElementById('newIcon').value.trim() || '🎁';
+      const name = document.getElementById('newName').value.trim();
+      const type = document.getElementById('newType').value.trim() || 'points';
+      const value = Number(document.getElementById('newValue').value) || 0;
+      const weight = Number(document.getElementById('newWeight').value) || 10;
+      if (!name) { alert('❗ 请输入奖品名称'); return; }
+      rewards = collectRewards();
+      rewards.push({ icon, name, type, value, weight, rarity: 'common', segment: rewards.length });
+      renderRewards();
+      document.getElementById('newIcon').value = '';
+      document.getElementById('newName').value = '';
+      document.getElementById('newType').value = '';
+      document.getElementById('newValue').value = '';
+      document.getElementById('newWeight').value = '';
+    }
+
+    function removeReward(index) {
+      rewards = collectRewards();
+      if (!confirm('确认删除奖品 "' + rewards[index].name + '" 吗？')) return;
+      rewards.splice(index, 1);
+      rewards = rewards.map((r, i) => ({ ...r, segment: i }));
+      renderRewards();
+    }
+
+    function saveRewards() {
+      rewards = collectRewards();
+      fetch('/api/admin/config/rewards', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rewards })
+      })
+        .then(r => r.json())
+        .then(d => alert(d.error ? '❌ ' + d.error : '✅ ' + d.message));
+    }
+
+    function loadDescription() {
+      fetch('/api/admin/config/description')
+        .then(r => r.json())
+        .then(d => {
+          document.getElementById('gameDesc').value = d.description || '';
+        });
+    }
+
+    function saveDescription() {
+      const description = document.getElementById('gameDesc').value.trim();
+      if (!description) { alert('❗ 说明不能为空'); return; }
+      fetch('/api/admin/config/description', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description })
+      })
+        .then(r => r.json())
+        .then(d => alert(d.error ? '❌ ' + d.error : '✅ ' + d.message));
+    }
+
+    function loadPaymentAccounts() {
+      fetch('/api/admin/payment-accounts')
+        .then(r => r.json())
+        .then(d => {
+          const accounts = d.accounts || [];
+          if (accounts.length === 0) {
+            document.getElementById('paymentList').innerHTML = '<p class="no-data">暂无收款账号</p>';
+            return;
+          }
+          let html = '<table><tr><th>账号名称</th><th>银行/平台</th><th>账号</th><th>持有人</th><th>添加时间</th><th>操作</th></tr>';
+          accounts.forEach(a => {
+            html += `<tr>
+              <td>${a.name}</td>
+              <td>${a.bank || '—'}</td>
+              <td>${a.account}</td>
+              <td>${a.holder || '—'}</td>
+              <td>${new Date(a.createdAt).toLocaleString('zh-CN')}</td>
+              <td><button class="btn-danger" onclick="deletePaymentAccount(${a.id})">🗑️ 删除</button></td>
+            </tr>`;
+          });
+          html += '</table>';
+          document.getElementById('paymentList').innerHTML = html;
+        })
+        .catch(() => {
+          document.getElementById('paymentList').innerHTML = '<p class="no-data" style="color:red;">❌ 无法加载账号列表</p>';
+        });
+    }
+
+    function addPaymentAccount() {
+      const name = document.getElementById('paName').value.trim();
+      const bank = document.getElementById('paBank').value.trim();
+      const account = document.getElementById('paAccount').value.trim();
+      const holder = document.getElementById('paHolder').value.trim();
+      if (!name || !account) { alert('❗ 请填写账号名称和账号'); return; }
+      fetch('/api/admin/payment-accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, bank, account, holder })
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) { alert('❌ ' + d.error); return; }
+          alert('✅ ' + d.message);
+          document.getElementById('paName').value = '';
+          document.getElementById('paBank').value = '';
+          document.getElementById('paAccount').value = '';
+          document.getElementById('paHolder').value = '';
+          loadPaymentAccounts();
+        });
+    }
+
+    function deletePaymentAccount(id) {
+      if (!confirm('确认删除该收款账号吗？')) return;
+      fetch('/api/admin/payment-accounts/' + id, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(d => {
+          alert(d.error ? '❌ ' + d.error : '✅ ' + d.message);
+          loadPaymentAccounts();
+        });
+    }
+
+    loadRewards();
+    loadDescription();
+    loadPaymentAccounts();
+  </script>
+</body>
+</html>

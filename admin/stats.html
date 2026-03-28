@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>幸运转盘 - 数据统计</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; }
+    .topbar {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar h1 { font-size: 1.2rem; }
+    .topbar .nav a {
+      color: white;
+      text-decoration: none;
+      margin-left: 18px;
+      font-size: 0.9rem;
+      opacity: 0.85;
+    }
+    .topbar .nav a:hover { opacity: 1; }
+    .topbar .logout {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-left: 18px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    .stat-card .label { color: #888; font-size: 0.85rem; margin-bottom: 6px; }
+    .stat-card .value { font-size: 1.8rem; font-weight: bold; color: #333; }
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      margin-bottom: 24px;
+    }
+    .section h2 { font-size: 1.1rem; margin-bottom: 16px; color: #444; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+    th { background: #f9f9f9; font-weight: 600; color: #555; }
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.78rem;
+      font-weight: bold;
+    }
+    .badge-legendary { background: #fff3cd; color: #856404; }
+    .badge-epic { background: #f3d9fa; color: #6f42c1; }
+    .badge-rare { background: #cce5ff; color: #004085; }
+    .badge-common { background: #e2e3e5; color: #383d41; }
+    button { padding: 6px 14px; margin: 2px; cursor: pointer; border: none; border-radius: 6px; font-size: 0.85rem; }
+    .btn-primary { background: #667eea; color: white; }
+    input[type="text"] {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      width: 200px;
+    }
+    .search-row { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; }
+    .no-data { text-align: center; color: #aaa; padding: 24px; }
+    .pagination { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
+    .pagination button { background: #667eea; color: white; }
+    .pagination button:disabled { background: #ccc; cursor: default; }
+    .recharge-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .recharge-card { background: #f0f4ff; border-radius: 10px; padding: 16px; }
+    .recharge-card .rc-label { color: #666; font-size: 0.85rem; margin-bottom: 6px; }
+    .recharge-card .rc-value { font-size: 1.5rem; font-weight: bold; color: #444; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>🎉 幸运转盘 - 数据统计</h1>
+    <div class="nav">
+      <a href="/admin/dashboard.html">仪表板</a>
+      <a href="/admin/users.html">用户管理</a>
+      <a href="/admin/managers.html">管理员审核</a>
+      <a href="/admin/config.html">游戏配置</a>
+      <a href="/admin/stats.html">数据统计</a>
+      <button class="logout" onclick="logout()">退出登录</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- 统计摘要 -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="label">注册用户数</div>
+        <div class="value" id="totalUsers">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">总转盘次数</div>
+        <div class="value" id="totalSpins">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">中奖记录总数</div>
+        <div class="value" id="totalWinRecords">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">已批准充值总额</div>
+        <div class="value" id="totalRecharge" style="font-size:1.3rem;">—</div>
+      </div>
+    </div>
+
+    <!-- 充值/提现统计 -->
+    <div class="section">
+      <h2>💰 充值/提现统计</h2>
+      <div class="recharge-stats">
+        <div class="recharge-card">
+          <div class="rc-label">✅ 已批准充值笔数</div>
+          <div class="rc-value" id="approvedCount">—</div>
+        </div>
+        <div class="recharge-card">
+          <div class="rc-label">⏳ 待审核充值笔数</div>
+          <div class="rc-value" id="pendingCount">—</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;">
+        <div id="rechargeTable"><p class="no-data">加载中...</p></div>
+      </div>
+    </div>
+
+    <!-- 所有中奖记录 -->
+    <div class="section">
+      <h2>🏆 中奖记录</h2>
+      <div id="winTable"><p class="no-data">加载中...</p></div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+
+    <!-- 用户中奖记录查询 -->
+    <div class="section">
+      <h2>🔍 按用户查询中奖记录</h2>
+      <div class="search-row">
+        <input type="text" id="queryUserId" placeholder="输入用户名查询" onkeydown="if(event.key==='Enter')queryUserRecords()">
+        <button class="btn-primary" onclick="queryUserRecords()">查 询</button>
+      </div>
+      <div id="userWinTable"></div>
+    </div>
+
+  </div>
+
+  <script>
+    const adminData = JSON.parse(sessionStorage.getItem('adminUser') || 'null');
+    if (!adminData) {
+      window.location.href = '/admin';
+    }
+
+    function logout() {
+      sessionStorage.removeItem('adminUser');
+      window.location.href = '/admin';
+    }
+
+    let currentPage = 1;
+
+    function loadSummary() {
+      fetch('/api/admin/stats/summary')
+        .then(r => r.json())
+        .then(d => {
+          document.getElementById('totalUsers').textContent = d.totalUsers ?? '—';
+          document.getElementById('totalSpins').textContent = d.totalSpins ?? '—';
+          document.getElementById('totalWinRecords').textContent = d.totalWinRecords ?? '—';
+          document.getElementById('totalRecharge').textContent = d.totalRecharge != null ? d.totalRecharge.toLocaleString() : '—';
+        })
+        .catch(() => {});
+    }
+
+    function loadRechargeStats() {
+      fetch('/recharge/requests')
+        .then(r => r.json())
+        .then(d => {
+          const approved = d.requests.filter(r => r.status === 'approved');
+          const pending = d.requests.filter(r => r.status === 'pending');
+          document.getElementById('approvedCount').textContent = approved.length;
+          document.getElementById('pendingCount').textContent = pending.length;
+
+          if (d.requests.length === 0) {
+            document.getElementById('rechargeTable').innerHTML = '<p class="no-data">暂无充值记录</p>';
+            return;
+          }
+          let html = '<table><tr><th>用户</th><th>金额</th><th>方式</th><th>状态</th><th>时间</th></tr>';
+          const methodMap = { momo: '📱 MoMo', bank: '🏦 银行', zalo: '💬 Zalo', account_cash: '💳 账户现金' };
+          const statusMap = { pending: '⏳ 待审核', approved: '✅ 已批准', rejected: '❌ 已拒绝' };
+          d.requests.slice().reverse().forEach(r => {
+            html += `<tr>
+              <td>${r.userId}</td>
+              <td>${r.amount.toLocaleString()}</td>
+              <td>${methodMap[r.method] || r.method}</td>
+              <td>${statusMap[r.status] || r.status}</td>
+              <td>${new Date(r.createdAt).toLocaleString('zh-CN')}</td>
+            </tr>`;
+          });
+          html += '</table>';
+          document.getElementById('rechargeTable').innerHTML = html;
+        })
+        .catch(() => {
+          document.getElementById('rechargeTable').innerHTML = '<p class="no-data" style="color:red;">❌ 无法加载充值记录</p>';
+        });
+    }
+
+    function loadWinRecords(page) {
+      currentPage = page || 1;
+      fetch('/api/admin/stats/records?page=' + currentPage + '&limit=20')
+        .then(r => r.json())
+        .then(d => {
+          if (!d.records || d.records.length === 0) {
+            document.getElementById('winTable').innerHTML = '<p class="no-data">暂无中奖记录</p>';
+            document.getElementById('pagination').innerHTML = '';
+            return;
+          }
+          let html = '<table><tr><th>用户</th><th>奖品</th><th>类型</th><th>价值</th><th>稀有度</th><th>时间</th></tr>';
+          d.records.forEach(r => {
+            const rarityCls = { legendary: 'badge-legendary', epic: 'badge-epic', rare: 'badge-rare', common: 'badge-common' }[r.rarity] || 'badge-common';
+            html += `<tr>
+              <td>${r.userId}</td>
+              <td>${r.rewardIcon || ''} ${r.rewardName}</td>
+              <td>${r.rewardType}</td>
+              <td>${(r.rewardValue || 0).toLocaleString()}</td>
+              <td><span class="badge ${rarityCls}">${r.rarity || '—'}</span></td>
+              <td>${new Date(r.createdAt).toLocaleString('zh-CN')}</td>
+            </tr>`;
+          });
+          html += '</table>';
+          document.getElementById('winTable').innerHTML = html;
+
+          const totalPages = Math.ceil(d.total / 20);
+          let paginHtml = `<button onclick="loadWinRecords(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>上一页</button>`;
+          paginHtml += `<span>第 ${currentPage} / ${totalPages || 1} 页（共 ${d.total} 条）</span>`;
+          paginHtml += `<button onclick="loadWinRecords(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>下一页</button>`;
+          document.getElementById('pagination').innerHTML = paginHtml;
+        })
+        .catch(() => {
+          document.getElementById('winTable').innerHTML = '<p class="no-data" style="color:red;">❌ 无法加载中奖记录</p>';
+        });
+    }
+
+    function queryUserRecords() {
+      const userId = document.getElementById('queryUserId').value.trim();
+      if (!userId) { alert('❗ 请输入用户名'); return; }
+      fetch('/api/admin/stats/user/' + encodeURIComponent(userId) + '/records')
+        .then(r => r.json())
+        .then(d => {
+          if (!d.records || d.records.length === 0) {
+            document.getElementById('userWinTable').innerHTML = '<p class="no-data">该用户暂无中奖记录</p>';
+            return;
+          }
+          let html = `<p style="margin-bottom:10px;color:#555;">用户 <strong>${d.userId}</strong> 共 ${d.total} 条中奖记录：</p>`;
+          html += '<table><tr><th>奖品</th><th>类型</th><th>价值</th><th>稀有度</th><th>时间</th></tr>';
+          d.records.forEach(r => {
+            const rarityCls = { legendary: 'badge-legendary', epic: 'badge-epic', rare: 'badge-rare', common: 'badge-common' }[r.rarity] || 'badge-common';
+            html += `<tr>
+              <td>${r.rewardIcon || ''} ${r.rewardName}</td>
+              <td>${r.rewardType}</td>
+              <td>${(r.rewardValue || 0).toLocaleString()}</td>
+              <td><span class="badge ${rarityCls}">${r.rarity || '—'}</span></td>
+              <td>${new Date(r.createdAt).toLocaleString('zh-CN')}</td>
+            </tr>`;
+          });
+          html += '</table>';
+          document.getElementById('userWinTable').innerHTML = html;
+        })
+        .catch(() => {
+          document.getElementById('userWinTable').innerHTML = '<p class="no-data" style="color:red;">❌ 无法查询</p>';
+        });
+    }
+
+    loadSummary();
+    loadRechargeStats();
+    loadWinRecords(1);
+  </script>
+</body>
+</html>
