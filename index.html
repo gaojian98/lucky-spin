@@ -86,14 +86,14 @@
           <p style="margin-top: 15px;">🎯 <strong>30,000 积分</strong></p>
           <p>= 1 次抽奖</p>
           <p style="margin-top: 15px;">🏆 <strong>奖项</strong></p>
-          <p>📱 iPhone 17 (0.01%)</p>
-          <p>🎧 AirPods (0.1%)</p>
-          <p>💰 1000K盾 (1%)</p>
-          <p>💵 50K盾 (5%)</p>
-          <p>⭐ 200K积分 (10%)</p>
-          <p>✨ 50K积分 (15%)</p>
-          <p>🎫 10K积分 (50%)</p>
-          <p>🎟️ 1K积分 (30%)</p>
+          <p>📱 iPhone 17 </p>
+          <p>🎧 AirPods </p>
+          <p>💰 1000K盾 </p>
+          <p>💵 50K盾 </p>
+          <p>⭐ 200K积分 </p>
+          <p>✨ 50K积分 </p>
+          <p>🎫 10K积分 </p>
+          <p>🎟️ 1K积分)</p>
         </div>
       </div>
       
@@ -364,7 +364,7 @@
       const extraRotation = 1800 + Math.floor(Math.random() * 1800);
       currentRotation += extraRotation;
       
-      svg.style.animation = 'none';
+      svg.style.animation = '';
       setTimeout(() => {
         svg.style.setProperty('--rotation', currentRotation + 'deg');
         svg.classList.add('wheel-spinning');
