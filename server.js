@@ -1,8 +1,13 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// 管理后台静态文件服务（优先于根目录静态文件）
+app.use('/admin', express.static(path.join(__dirname, 'admin')));
+
 app.use(express.static(__dirname));
 
 let users = {};
@@ -235,12 +240,25 @@ app.get("/recharge/history/:userId", (req, res) => {
   });
 });
 
+// 管理员账号（初始超级管理员）
+const ADMIN_ACCOUNTS = {
+  admin: { password: "admin123", role: "super" }
+};
+
+app.post("/api/admin/login", (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.json({ error: "请输入账号和密码" });
+  const account = ADMIN_ACCOUNTS[username];
+  if (!account || account.password !== password) return res.json({ error: "账号或密码错误" });
+  res.json({ username, role: account.role });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("\n🎉 ========================================");
   console.log("🎉 幸运转盘服务器启动成功！");
   console.log("🌐 访问地址: http://localhost:" + PORT);
   console.log("💰 充值接口已启用");
-  console.log("📊 管理后台: http://localhost:" + PORT + "/admin.html");
+  console.log("📊 管理后台: http://localhost:" + PORT + "/admin");
   console.log("🎉 ========================================\n");
 });
