@@ -1,12 +1,174 @@
-function spin() {
-    const pointerAngles = [337.5, 22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5];
-    const segments = 8; // total segments
-    const anglePerSegment = 360 / segments;
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>幸运转盘</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial; background: #667eea; min-height: 100vh; display: flex; justify-content: center; align-items: center; }
+    .container { background: white; padding: 30px; border-radius: 20px; width: 90%; max-width: 500px; }
+    h1 { text-align: center; margin-bottom: 30px; }
+    .wheel { width: 250px; height: 250px; border: 8px solid #ff9800; border-radius: 50%; margin: 20px auto; display: flex; align-items: center; justify-content: center; font-size: 60px; transition: transform 3s; }
+    input, button { padding: 10px; margin: 5px; font-size: 14px; border: 1px solid #ddd; border-radius: 5px; width: 100%; }
+    button { background: #667eea; color: white; cursor: pointer; border: none; }
+    button:hover { background: #764ba2; }
+    .info { text-align: center; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎉 幸运转盘</h1>
+    
+    <div style="margin-bottom: 20px;">
+      <input type="text" id="username" placeholder="用户名">
+      <button onclick="login()">登录</button>
+      <button onclick="showRegister()">注册</button>
+    </div>
 
-    // logic to calculate the actual rotation angle
-    let randomSegment = Math.floor(Math.random() * segments);
-    let rotationAngle = pointerAngles[randomSegment];
+    <div class="wheel" id="wheel">🎁</div>
 
-    // additional logic for spinning animation, etc.
-    rotateWheel(rotationAngle);
-}
+    <div class="info">
+      <p>积分: <strong id="points">0</strong></p>
+      <p>现金: <strong id="cash">0</strong></p>
+    </div>
+
+    <button onclick="spin()" id="spinBtn">抽奖</button>
+    <div id="result" style="text-align: center; margin-top: 20px; font-size: 18px;"></div>
+
+    <div id="registerBox" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border: 2px solid #ddd; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.2); z-index: 100;">
+      <h3>注册</h3>
+      <input type="text" id="reg_username" placeholder="用户名">
+      <input type="password" id="reg_password" placeholder="密码">
+      <input type="text" id="reg_phone" placeholder="手机号">
+      <input type="text" id="reg_bank" placeholder="银行卡">
+      <button onclick="submitRegister()">提交</button>
+      <button onclick="closeRegister()">关闭</button>
+    </div>
+  </div>
+
+  <script>
+    const API = "http://localhost:3000";
+    let currentUser = null;
+    let currentDeg = 0;
+
+    function login() {
+      const username = document.getElementById("username").value;
+      if (!username) { alert("请输入用户名"); return; }
+      
+      fetch(API + "/register", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({userId: username, password: "pass", phone: "123", bank: "456"})
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) { alert(d.error); }
+        else {
+          currentUser = username;
+          document.getElementById("points").innerText = d.points;
+          document.getElementById("cash").innerText = d.cash;
+          document.getElementById("spinBtn").disabled = false;
+          alert("登录成功！");
+        }
+      })
+      .catch(e => alert("连接失败"));
+    }
+
+    function showRegister() {
+      document.getElementById("registerBox").style.display = "block";
+    }
+
+    function closeRegister() {
+      document.getElementById("registerBox").style.display = "none";
+    }
+
+    function submitRegister() {
+      const username = document.getElementById("reg_username").value;
+      const password = document.getElementById("reg_password").value;
+      const phone = document.getElementById("reg_phone").value;
+      const bank = document.getElementById("reg_bank").value;
+
+      if (!username || !password || !phone || !bank) {
+        alert("请填写完整信息");
+        return;
+      }
+
+      fetch(API + "/register", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({userId: username, password: password, phone: phone, bank: bank})
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) { alert(d.error); }
+        else {
+          currentUser = username;
+          document.getElementById("points").innerText = d.points;
+          document.getElementById("cash").innerText = d.cash;
+          closeRegister();
+          alert("注册成功！获得100000积分");
+          document.getElementById("spinBtn").disabled = false;
+        }
+      })
+      .catch(e => alert("注册失败"));
+    }
+
+    function spin() {
+      if (!currentUser) { alert("请先登录"); return; }
+
+      const spinBtn = document.getElementById("spinBtn");
+      spinBtn.disabled = true;
+
+      // Call backend first to get the winning reward
+      fetch(API + "/spin", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({userId: currentUser})
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) {
+          document.getElementById("result").innerText = d.error;
+          spinBtn.disabled = false;
+        } else {
+          // Each segment is 45°. The pointer is at the top (0°).
+          // Segment 0 (iPhone 17) lands at 337.5°, segment 1 (AirPods) at 292.5°, etc.
+          // Formula: targetAngle = 337.5 - segment * 45
+          const targetAngle = 337.5 - d.reward.segment * 45;
+
+          // Normalise current accumulated rotation to [0, 360)
+          const currentNormalized = ((currentDeg % 360) + 360) % 360;
+
+          // Calculate the shortest forward delta to reach targetAngle
+          let delta = targetAngle - currentNormalized;
+          if (delta < 0) delta += 360;
+
+          // Add at least 5 full rotations (1800°) so the animation looks convincing
+          currentDeg += 1800 + delta;
+
+          const wheel = document.getElementById("wheel");
+          wheel.style.transform = "rotate(" + currentDeg + "deg)";
+
+          // Show result after the CSS transition (3 s) has finished
+          setTimeout(() => {
+            document.getElementById("points").innerText = d.user.points;
+            document.getElementById("cash").innerText = d.user.cash;
+            let msg = "";
+            if (d.reward.type === "points") msg = "🎉 获得 " + d.reward.value + " 积分";
+            else if (d.reward.type === "cash") msg = "💰 获得 " + d.reward.value + " 越南盾";
+            else if (d.reward.type === "iphone") msg = "🏆 获得 iPhone";
+            else if (d.reward.type === "airpods") msg = "🎧 获得 AirPods";
+            else msg = "😢 未中奖";
+            document.getElementById("result").innerText = msg;
+            spinBtn.disabled = false;
+          }, 3000);
+        }
+      })
+      .catch(e => {
+        alert("抽奖失败");
+        spinBtn.disabled = false;
+      });
+    }
+  </script>
+</body>
+</html>
