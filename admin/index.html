@@ -1,131 +1,196 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>幸运转盘 - 管理后台登录</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .login-card {
-      background: white;
-      border-radius: 16px;
-      padding: 40px;
-      width: 360px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    }
-    .login-card h1 {
-      text-align: center;
-      font-size: 1.6rem;
-      color: #333;
-      margin-bottom: 8px;
-    }
-    .login-card p.subtitle {
-      text-align: center;
-      color: #888;
-      font-size: 0.9rem;
-      margin-bottom: 28px;
-    }
-    .form-group {
-      margin-bottom: 18px;
-    }
-    .form-group label {
-      display: block;
-      margin-bottom: 6px;
-      font-weight: bold;
-      color: #555;
-      font-size: 0.9rem;
-    }
-    .form-group input {
-      width: 100%;
-      padding: 10px 14px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      font-size: 1rem;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    .form-group input:focus {
-      border-color: #667eea;
-    }
-    .btn-login {
-      width: 100%;
-      padding: 12px;
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 1rem;
-      cursor: pointer;
-      margin-top: 8px;
-      transition: opacity 0.2s;
-    }
-    .btn-login:hover { opacity: 0.9; }
-    .error-msg {
-      color: #dc3545;
-      font-size: 0.85rem;
-      margin-top: 12px;
-      text-align: center;
-      display: none;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幸运转盘 - 管理后台登录</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            width: 360px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .login-card h1 {
+            text-align: center;
+            font-size: 1.6rem;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .login-card p.subtitle {
+            text-align: center;
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 28px;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: #555;
+            font-size: 0.9rem;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus {
+            border-color: #667eea;
+            border-width: 2px;
+        }
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: opacity 0.2s;
+            font-weight: bold;
+        }
+        .btn-login:hover { 
+            opacity: 0.9; 
+        }
+        .btn-login:active {
+            opacity: 0.8;
+        }
+        .error-msg {
+            color: #dc3545;
+            font-size: 0.85rem;
+            margin-top: 12px;
+            text-align: center;
+            display: none;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+        }
+    </style>
 </head>
 <body>
-  <div class="login-card">
-    <h1>🎉 管理后台</h1>
-    <p class="subtitle">幸运转盘 - 后台管理系统</p>
-    <div class="form-group">
-      <label>管理员账号</label>
-      <input type="text" id="username" placeholder="请输入账号" autofocus>
+    <div class="login-card">
+        <h1>🎉 管理后台</h1>
+        <p class="subtitle">幸运转盘 - 后台管理系统</p>
+        
+        <div class="form-group">
+            <label>管理员账号</label>
+            <input type="text" id="username" placeholder="请输入账号（默认: admin）" autofocus>
+        </div>
+        
+        <div class="form-group">
+            <label>密码</label>
+            <input type="password" id="password" placeholder="请输入密码（默认: admin123）" onkeydown="if(event.key==='Enter')login()">
+        </div>
+        
+        <button class="btn-login" id="loginBtn" onclick="login()">登 录</button>
+        
+        <div class="loading" id="loading">登录中...</div>
+        <p class="error-msg" id="errorMsg"></p>
     </div>
-    <div class="form-group">
-      <label>密码</label>
-      <input type="password" id="password" placeholder="请输入密码" onkeydown="if(event.key==='Enter')login()">
-    </div>
-    <button class="btn-login" onclick="login()">登 录</button>
-    <p class="error-msg" id="errorMsg"></p>
-  </div>
 
-  <script>
-    function login() {
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value;
-      const errorMsg = document.getElementById('errorMsg');
+    <script>
+        // 防止重定向循环
+        // 登录页不需要检查 Token，直接显示登录框
+        
+        const loginBtn = document.getElementById('loginBtn');
+        const loading = document.getElementById('loading');
+        const errorMsg = document.getElementById('errorMsg');
+        
+        function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
 
-      if (!username || !password) {
-        errorMsg.style.display = 'block';
-        errorMsg.textContent = '❗ 请输入账号和密码';
-        return;
-      }
+            if (!username || !password) {
+                showError('❗ 请输入账号和密码');
+                return;
+            }
 
-      fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      })
-      .then(r => r.json())
-      .then(data => {
-        if (data.error) {
-          errorMsg.style.display = 'block';
-          errorMsg.textContent = '❌ ' + data.error;
-        } else {
-          sessionStorage.setItem('adminUser', JSON.stringify(data));
-          window.location.href = '/admin/dashboard.html';
+            // 显示加载状态
+            loginBtn.disabled = true;
+            loading.style.display = 'block';
+            errorMsg.style.display = 'none';
+
+            // 请求登录
+            fetch('/api/admin/login', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            })
+            .then(r => {
+                if (!r.ok) throw new Error('请求失败');
+                return r.json();
+            })
+            .then(data => {
+                console.log('登录响应:', data);
+                
+                if (data.error) {
+                    showError('❌ ' + data.error);
+                    loginBtn.disabled = false;
+                    loading.style.display = 'none';
+                    return;
+                }
+                
+                if (data.token) {
+                    // 保存到 localStorage
+                    localStorage.setItem('adminToken', data.token);
+                    localStorage.setItem('adminUser', data.username);
+                    
+                    console.log('✅ 登录成功，跳转...');
+                    // 延迟以确保数据保存
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 500);
+                } else {
+                    showError('❌ 登录失败，响应格式错误');
+                    loginBtn.disabled = false;
+                    loading.style.display = 'none';
+                }
+            })
+            .catch(err => {
+                console.error('登录错误:', err);
+                showError('❌ 无���连接到服务器: ' + err.message);
+                loginBtn.disabled = false;
+                loading.style.display = 'none';
+            });
         }
-      })
-      .catch(() => {
-        errorMsg.style.display = 'block';
-        errorMsg.textContent = '❌ 无法连接到服务器';
-      });
-    }
-  </script>
-<script src="nav.js"></script>
+
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.style.display = 'block';
+        }
+
+        // 登录页上不加载 nav.js
+        // 检查是否已登录，如果已登录则跳转到首页
+        if (localStorage.getItem('adminToken')) {
+            window.location.href = 'dashboard.html';
+        }
+    </script>
 </body>
 </html>

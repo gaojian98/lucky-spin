@@ -1,7 +1,14 @@
-// 检查权限
+// 检查权限 - 只在非登录页执行
 function checkAdminAuth() {
+    const currentPage = window.location.pathname.split('/').pop();
+    
+    // 登录页不需要检查
+    if (currentPage === 'index.html' || currentPage === '') {
+        return;
+    }
+    
     if (!localStorage.getItem('adminToken')) {
-        // 自动重定向到登录页，而不是弹窗
+        // 自动重定向到登录页
         window.location.href = 'index.html';
     }
 }
@@ -121,7 +128,13 @@ function logoutAdmin() {
     }
 }
 
+// 只在非登录页加载导航和检查权限
 document.addEventListener('DOMContentLoaded', () => {
-    checkAdminAuth();
-    createNavigation();
+    const currentPage = window.location.pathname.split('/').pop();
+    
+    // 登录页不加载导航
+    if (currentPage !== 'index.html' && currentPage !== '') {
+        checkAdminAuth();
+        createNavigation();
+    }
 });
