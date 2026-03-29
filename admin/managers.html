@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Application Approval/Rejection</title>
+</head>
+<body>
+    <h1>Application Approval/Rejection Interface</h1>
+    <form action="/admin/applications" method="POST">
+        <label for="app-id">Application ID:</label>
+        <input type="text" id="app-id" name="app-id" required>
+        <br>
+        <label for="status">Status:</label>
+        <select id="status" name="status">
+            <option value="approved">Approve</option>
+            <option value="rejected">Reject</option>
+        </select>
+        <br>
+        <button type="submit">Submit</button>
+    </form>
+</body>
+</html>
