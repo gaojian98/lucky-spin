@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>幸运转盘 - 管理员审核</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; }
+    .topbar {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar h1 { font-size: 1.2rem; }
+    .topbar .nav a {
+      color: white;
+      text-decoration: none;
+      margin-left: 18px;
+      font-size: 0.9rem;
+      opacity: 0.85;
+    }
+    .topbar .nav a:hover { opacity: 1; }
+    .topbar .logout {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-left: 18px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      margin-bottom: 24px;
+    }
+    .section h2 { font-size: 1.1rem; margin-bottom: 16px; color: #444; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+    th { background: #f9f9f9; font-weight: 600; color: #555; }
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.78rem;
+      font-weight: bold;
+    }
+    .badge-pending { background: #fff3cd; color: #856404; }
+    .badge-approved { background: #d4edda; color: #155724; }
+    .badge-rejected { background: #f8d7da; color: #721c24; }
+    .badge-super { background: #cce5ff; color: #004085; }
+    .badge-manager { background: #e2e3e5; color: #383d41; }
+    button { padding: 6px 14px; margin: 2px; cursor: pointer; border: none; border-radius: 6px; font-size: 0.85rem; }
+    .btn-approve { background: #28a745; color: white; }
+    .btn-reject { background: #dc3545; color: white; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-danger { background: #dc3545; color: white; }
+    .btn-warning { background: #ffc107; color: #333; }
+    .no-data { text-align: center; color: #aaa; padding: 24px; }
+    .reason-cell { max-width: 220px; word-break: break-all; color: #666; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>🎉 幸运转盘 - 管理员审核</h1>
+    <div class="nav">
+      <a href="/admin/dashboard.html">仪表板</a>
+      <a href="/admin/users.html">用户管理</a>
+      <a href="/admin/managers.html">管理员审核</a>
+      <a href="/admin/config.html">游戏配置</a>
+      <a href="/admin/stats.html">数据统计</a>
+      <button class="logout" onclick="logout()">退出登录</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- 申请审核 -->
+    <div class="section">
+      <h2>📋 管理员申请审核</h2>
+      <div id="applicationsList"><p class="no-data">加载中...</p></div>
+    </div>
+
+    <!-- 管理员列表 -->
+    <div class="section">
+      <h2>👨‍💼 管理员列表</h2>
+      <div id="managersList"><p class="no-data">加载中...</p></div>
+    </div>
+  </div>
+
+  <script>
+    const adminData = JSON.parse(sessionStorage.getItem('adminUser') || 'null');
+    if (!adminData) window.location.href = '/admin';
+
+    const TOKEN = adminData && adminData.token;
+
+    function authHeaders() {
+      return { 'Content-Type': 'application/json', 'X-Admin-Token': TOKEN || '' };
+    }
+
+    function logout() {
+      sessionStorage.removeItem('adminUser');
+      window.location.href = '/admin';
+    }
+
+    function loadApplications() {
+      fetch('/api/admin/applications', { headers: authHeaders() })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) {
+            document.getElementById('applicationsList').innerHTML = '<p class="no-data" style="color:red;">❌ ' + d.error + '</p>';
+            return;
+          }
+          const apps = d.applications || [];
+          if (apps.length === 0) {
+            document.getElementById('applicationsList').innerHTML = '<p class="no-data">暂无申请记录</p>';
+            return;
+          }
+          let html = '<table><tr><th>用户名</th><th>申请理由</th><th>申请时间</th><th>状态</th><th>操作</th></tr>';
+          apps.forEach(a => {
+            const statusMap = {
+              pending: ['badge-pending', '⏳ 待审核'],
+              approved: ['badge-approved', '✅ 已批准'],
+              rejected: ['badge-rejected', '❌ 已拒绝']
+            };
+            const [cls, txt] = statusMap[a.status] || ['', a.status];
+            html += `<tr>
+              <td><strong>${escHtml(a.username)}</strong></td>
+              <td class="reason-cell">${escHtml(a.reason || '（无）')}</td>
+              <td>${new Date(a.createdAt).toLocaleString('zh-CN')}</td>
+              <td><span class="badge ${cls}">${txt}</span></td>
+              <td>`;
+            if (a.status === 'pending') {
+              html += `<button class="btn-approve" onclick="approveApp(${a.id})">✅ 批准</button>`;
+              html += `<button class="btn-reject" onclick="rejectApp(${a.id})">❌ 拒绝</button>`;
+            } else {
+              html += '<span style="color:#aaa;">已处理</span>';
+            }
+            html += '</td></tr>';
+          });
+          html += '</table>';
+          document.getElementById('applicationsList').innerHTML = html;
+        })
+        .catch(() => {
+          document.getElementById('applicationsList').innerHTML = '<p class="no-data" style="color:red;">❌ 无法连接到服务器</p>';
+        });
+    }
+
+    function loadManagers() {
+      fetch('/api/admin/managers', { headers: authHeaders() })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) {
+            document.getElementById('managersList').innerHTML = '<p class="no-data" style="color:red;">❌ ' + d.error + '</p>';
+            return;
+          }
+          const mgrs = d.managers || [];
+          if (mgrs.length === 0) {
+            document.getElementById('managersList').innerHTML = '<p class="no-data">暂无管理员</p>';
+            return;
+          }
+          let html = '<table><tr><th>用户名</th><th>角色</th><th>操作</th></tr>';
+          mgrs.forEach(m => {
+            const roleCls = m.role === 'super' ? 'badge-super' : 'badge-manager';
+            const roleTxt = m.role === 'super' ? '👑 超级管理员' : '👨‍💼 管理员';
+            html += `<tr>
+              <td><strong>${escHtml(m.username)}</strong></td>
+              <td><span class="badge ${roleCls}">${roleTxt}</span></td>
+              <td>`;
+            if (m.role !== 'super') {
+              html += `<button class="btn-warning" onclick="resetPassword(${JSON.stringify(m.username)})">🔑 重置密码</button>`;
+              html += `<button class="btn-danger" onclick="deleteManager(${JSON.stringify(m.username)})">🗑️ 删除</button>`;
+            } else {
+              html += '<span style="color:#aaa;">不可操作</span>';
+            }
+            html += '</td></tr>';
+          });
+          html += '</table>';
+          document.getElementById('managersList').innerHTML = html;
+        })
+        .catch(() => {
+          document.getElementById('managersList').innerHTML = '<p class="no-data" style="color:red;">❌ 无法连接到服务器</p>';
+        });
+    }
+
+    function approveApp(id) {
+      if (!confirm('确认批准该管理员申请吗？')) return;
+      fetch('/api/admin/applications/' + id + '/approve', { method: 'PATCH', headers: authHeaders() })
+        .then(r => r.json())
+        .then(d => {
+          alert(d.error ? '❌ ' + d.error : '✅ ' + d.message);
+          loadApplications();
+          loadManagers();
+        });
+    }
+
+    function rejectApp(id) {
+      if (!confirm('确认拒绝该管理员申请吗？')) return;
+      fetch('/api/admin/applications/' + id + '/reject', { method: 'PATCH', headers: authHeaders() })
+        .then(r => r.json())
+        .then(d => {
+          alert(d.error ? '❌ ' + d.error : '✅ ' + d.message);
+          loadApplications();
+        });
+    }
+
+    function deleteManager(username) {
+      if (!confirm('确认删除管理员 ' + username + ' 吗？此操作不可撤销！')) return;
+      fetch('/api/admin/managers/' + encodeURIComponent(username), { method: 'DELETE', headers: authHeaders() })
+        .then(r => r.json())
+        .then(d => {
+          alert(d.error ? '❌ ' + d.error : '✅ ' + d.message);
+          loadManagers();
+        });
+    }
+
+    function resetPassword(username) {
+      const newPwd = prompt('输入新密码（留空自动生成）：');
+      fetch('/api/admin/managers/' + encodeURIComponent(username) + '/reset-password', {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: JSON.stringify({ newPassword: newPwd || '' })
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) alert('❌ ' + d.error);
+          else alert('✅ ' + d.message + '\n新密码：' + d.newPassword);
+        });
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    loadApplications();
+    loadManagers();
+  </script>
+</body>
+</html>

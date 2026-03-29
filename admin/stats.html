@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>幸运转盘 - 数据统计</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; }
+    .topbar {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar h1 { font-size: 1.2rem; }
+    .topbar .nav a {
+      color: white;
+      text-decoration: none;
+      margin-left: 18px;
+      font-size: 0.9rem;
+      opacity: 0.85;
+    }
+    .topbar .nav a:hover { opacity: 1; }
+    .topbar .logout {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-left: 18px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    .stat-card .label { color: #888; font-size: 0.85rem; margin-bottom: 6px; }
+    .stat-card .value { font-size: 1.6rem; font-weight: bold; color: #333; }
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      margin-bottom: 24px;
+    }
+    .section h2 { font-size: 1.1rem; margin-bottom: 16px; color: #444; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+    th { background: #f9f9f9; font-weight: 600; color: #555; }
+    .no-data { text-align: center; color: #aaa; padding: 24px; }
+    .search-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .search-row input {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      width: 220px;
+    }
+    .search-row button {
+      padding: 8px 16px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .pagination button {
+      padding: 6px 14px;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .pagination button.active {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+    .pagination button:hover:not(.active) { background: #f0f0f0; }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-size: 0.78rem;
+      font-weight: bold;
+    }
+    .badge-points { background: #e2e3f5; color: #4040a0; }
+    .badge-cash { background: #d4edda; color: #155724; }
+    .badge-prize { background: #fff3cd; color: #856404; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>🎉 幸运转盘 - 数据统计</h1>
+    <div class="nav">
+      <a href="/admin/dashboard.html">仪表板</a>
+      <a href="/admin/users.html">用户管理</a>
+      <a href="/admin/managers.html">管理员审核</a>
+      <a href="/admin/config.html">游戏配置</a>
+      <a href="/admin/stats.html">数据统计</a>
+      <button class="logout" onclick="logout()">退出登录</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- 统计摘要 -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="label">总用户数</div>
+        <div class="value" id="statUsers">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">总转盘次数</div>
+        <div class="value" id="statSpins">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">中奖记录数</div>
+        <div class="value" id="statWinRecords">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">总赢取积分</div>
+        <div class="value" id="statWinnings" style="font-size:1.2rem;">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">已批准充值</div>
+        <div class="value" id="statRecharge" style="font-size:1.2rem;">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">待审核充值</div>
+        <div class="value" id="statPending" style="color:#856404;">—</div>
+      </div>
+    </div>
+
+    <!-- 中奖记录 -->
+    <div class="section">
+      <h2>🏆 中奖记录</h2>
+      <div id="recordsList"><p class="no-data">加载中...</p></div>
+      <div class="pagination" id="recordsPagination"></div>
+    </div>
+
+    <!-- 用户中奖记录查询 -->
+    <div class="section">
+      <h2>🔍 查询用户中奖记录</h2>
+      <div class="search-row">
+        <input type="text" id="queryUserId" placeholder="输入用户名查询" onkeydown="if(event.key==='Enter')queryUserRecords()">
+        <button onclick="queryUserRecords()">查 询</button>
+      </div>
+      <div id="userRecordsList"></div>
+    </div>
+  </div>
+
+  <script>
+    const adminData = JSON.parse(sessionStorage.getItem('adminUser') || 'null');
+    if (!adminData) window.location.href = '/admin';
+
+    const TOKEN = adminData && adminData.token;
+
+    function authHeaders() {
+      return { 'Content-Type': 'application/json', 'X-Admin-Token': TOKEN || '' };
+    }
+
+    function logout() {
+      sessionStorage.removeItem('adminUser');
+      window.location.href = '/admin';
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function loadSummary() {
+      fetch('/api/admin/stats/summary', { headers: authHeaders() })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) return;
+          document.getElementById('statUsers').textContent = d.totalUsers.toLocaleString();
+          document.getElementById('statSpins').textContent = d.totalSpins.toLocaleString();
+          document.getElementById('statWinRecords').textContent = d.totalWinRecords.toLocaleString();
+          document.getElementById('statWinnings').textContent = d.totalWinnings.toLocaleString();
+          document.getElementById('statRecharge').textContent = d.totalRecharge.toLocaleString();
+          document.getElementById('statPending').textContent = d.pendingRecharge.toLocaleString();
+        });
+    }
+
+    let currentPage = 1;
+    const PAGE_SIZE = 20;
+
+    function loadRecords(page) {
+      currentPage = page || 1;
+      fetch('/api/admin/stats/records?page=' + currentPage + '&limit=' + PAGE_SIZE, { headers: authHeaders() })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) { document.getElementById('recordsList').innerHTML = '<p class="no-data" style="color:red;">❌ ' + d.error + '</p>'; return; }
+          const records = d.records || [];
+          if (records.length === 0) {
+            document.getElementById('recordsList').innerHTML = '<p class="no-data">暂无中奖记录</p>';
+            document.getElementById('recordsPagination').innerHTML = '';
+            return;
+          }
+          let html = '<table><tr><th>用户</th><th>奖品</th><th>类型</th><th>价值</th><th>时间</th></tr>';
+          records.forEach(r => {
+            const typeCls = r.reward.type === 'points' ? 'badge-points' : r.reward.type === 'cash' ? 'badge-cash' : 'badge-prize';
+            const typeLabel = { points: '积分', cash: '现金', iphone: 'iPhone', airpods: 'AirPods' }[r.reward.type] || r.reward.type;
+            html += `<tr>
+              <td><strong>${escHtml(r.userId)}</strong></td>
+              <td>${escHtml(r.reward.icon || '')} ${escHtml(r.reward.name)}</td>
+              <td><span class="badge ${typeCls}">${typeLabel}</span></td>
+              <td>${(r.reward.value || 0).toLocaleString()}</td>
+              <td>${new Date(r.timestamp).toLocaleString('zh-CN')}</td>
+            </tr>`;
+          });
+          html += '</table>';
+          document.getElementById('recordsList').innerHTML = html;
+
+          const totalPages = Math.ceil(d.total / PAGE_SIZE);
+          renderPagination(totalPages);
+        })
+        .catch(() => document.getElementById('recordsList').innerHTML = '<p class="no-data" style="color:red;">❌ 无法连接到服务器</p>');
+    }
+
+    function renderPagination(totalPages) {
+      if (totalPages <= 1) { document.getElementById('recordsPagination').innerHTML = ''; return; }
+      let html = '';
+      if (currentPage > 1) html += `<button onclick="loadRecords(${currentPage - 1})">« 上一页</button>`;
+      const start = Math.max(1, currentPage - 2);
+      const end = Math.min(totalPages, currentPage + 2);
+      for (let p = start; p <= end; p++) {
+        html += `<button class="${p === currentPage ? 'active' : ''}" onclick="loadRecords(${p})">${p}</button>`;
+      }
+      if (currentPage < totalPages) html += `<button onclick="loadRecords(${currentPage + 1})">下一页 »</button>`;
+      document.getElementById('recordsPagination').innerHTML = html;
+    }
+
+    function queryUserRecords() {
+      const userId = document.getElementById('queryUserId').value.trim();
+      if (!userId) { alert('❗ 请输入用户名'); return; }
+      fetch('/api/admin/stats/user/' + encodeURIComponent(userId) + '/records', { headers: authHeaders() })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) { document.getElementById('userRecordsList').innerHTML = '<p class="no-data" style="color:red;">❌ ' + d.error + '</p>'; return; }
+          const records = d.records || [];
+          if (records.length === 0) {
+            document.getElementById('userRecordsList').innerHTML = '<p class="no-data">该用户暂无中奖记录</p>';
+            return;
+          }
+          let html = `<p style="margin-bottom:10px;color:#555;">用户 <strong>${escHtml(userId)}</strong> 共有 <strong>${d.total}</strong> 条中奖记录：</p>`;
+          html += '<table><tr><th>奖品</th><th>类型</th><th>价值</th><th>时间</th></tr>';
+          records.forEach(r => {
+            const typeLabel = { points: '积分', cash: '现金', iphone: 'iPhone', airpods: 'AirPods' }[r.reward.type] || r.reward.type;
+            html += `<tr>
+              <td>${escHtml(r.reward.icon || '')} ${escHtml(r.reward.name)}</td>
+              <td>${typeLabel}</td>
+              <td>${(r.reward.value || 0).toLocaleString()}</td>
+              <td>${new Date(r.timestamp).toLocaleString('zh-CN')}</td>
+            </tr>`;
+          });
+          html += '</table>';
+          document.getElementById('userRecordsList').innerHTML = html;
+        })
+        .catch(() => document.getElementById('userRecordsList').innerHTML = '<p class="no-data" style="color:red;">❌ 无法连接到服务器</p>');
+    }
+
+    loadSummary();
+    loadRecords(1);
+    setInterval(loadSummary, 30000);
+  </script>
+</body>
+</html>

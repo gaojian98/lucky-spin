@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>幸运转盘 - 游戏配置</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; }
+    .topbar {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar h1 { font-size: 1.2rem; }
+    .topbar .nav a {
+      color: white;
+      text-decoration: none;
+      margin-left: 18px;
+      font-size: 0.9rem;
+      opacity: 0.85;
+    }
+    .topbar .nav a:hover { opacity: 1; }
+    .topbar .logout {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-left: 18px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      margin-bottom: 24px;
+    }
+    .section h2 { font-size: 1.1rem; margin-bottom: 16px; color: #444; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+    th { background: #f9f9f9; font-weight: 600; color: #555; }
+    button { padding: 6px 14px; margin: 2px; cursor: pointer; border: none; border-radius: 6px; font-size: 0.85rem; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-danger { background: #dc3545; color: white; }
+    .btn-warning { background: #ffc107; color: #333; }
+    .no-data { text-align: center; color: #aaa; padding: 24px; }
+    input[type="text"], input[type="number"], textarea {
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-family: Arial, sans-serif;
+    }
+    input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    .form-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .form-row label { font-size: 0.9rem; color: #555; min-width: 60px; }
+    textarea { width: 100%; min-height: 120px; resize: vertical; margin-bottom: 12px; }
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      color: white;
+      font-size: 0.9rem;
+      z-index: 9999;
+      display: none;
+    }
+    .toast.success { background: #28a745; }
+    .toast.error { background: #dc3545; }
+    .edit-input { width: 100px; }
+    .edit-icon-input { width: 60px; }
+    .section-actions { margin-bottom: 12px; }
+    .add-form {
+      background: #f8f9ff;
+      border: 1px solid #e0e4ff;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+      display: none;
+    }
+    .add-form.show { display: block; }
+    .add-form h3 { font-size: 0.95rem; color: #555; margin-bottom: 12px; }
+    .accounts-table td, .accounts-table th { font-size: 0.88rem; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>🎉 幸运转盘 - 游戏配置</h1>
+    <div class="nav">
+      <a href="/admin/dashboard.html">仪表板</a>
+      <a href="/admin/users.html">用户管理</a>
+      <a href="/admin/managers.html">管理员审核</a>
+      <a href="/admin/config.html">游戏配置</a>
+      <a href="/admin/stats.html">数据统计</a>
+      <button class="logout" onclick="logout()">退出登录</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <div class="container">
+    <!-- 奖品配置 -->
+    <div class="section">
+      <h2>🎁 奖品配置</h2>
+      <div class="section-actions">
+        <button class="btn-success" onclick="toggleAddReward()">➕ 添加奖品</button>
+        <button class="btn-primary" onclick="saveRewards()" style="margin-left:8px;">💾 保存全部配置</button>
+      </div>
+      <div id="addRewardForm" class="add-form">
+        <h3>添加新奖品</h3>
+        <div class="form-row">
+          <label>名称</label>
+          <input type="text" id="newName" placeholder="奖品名称" style="width:140px;">
+          <label>图标</label>
+          <input type="text" id="newIcon" placeholder="🎁" style="width:60px;">
+          <label>类型</label>
+          <select id="newType" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:0.9rem;">
+            <option value="points">积分</option>
+            <option value="cash">现金</option>
+            <option value="iphone">iPhone</option>
+            <option value="airpods">AirPods</option>
+          </select>
+          <label>价值</label>
+          <input type="number" id="newValue" placeholder="0" style="width:100px;">
+          <label>权重</label>
+          <input type="number" id="newWeight" placeholder="1" step="0.01" style="width:80px;">
+          <button class="btn-success" onclick="addReward()">✅ 添加</button>
+          <button onclick="toggleAddReward()">取消</button>
+        </div>
+      </div>
+      <div id="rewardsList" style="margin-top:16px;"><p class="no-data">加载中...</p></div>
+    </div>
+
+    <!-- 游戏说明 -->
+    <div class="section">
+      <h2>📝 游戏说明</h2>
+      <textarea id="gameDesc" placeholder="游戏说明内容..."></textarea>
+      <button class="btn-primary" onclick="saveDescription()">💾 保存游戏说明</button>
+    </div>
+
+    <!-- 收款账号管理 -->
+    <div class="section">
+      <h2>💳 收款账号管理</h2>
+      <div class="section-actions">
+        <button class="btn-success" onclick="toggleAddAccount()">➕ 添加收款账号</button>
+      </div>
+      <div id="addAccountForm" class="add-form">
+        <h3>添加收款账号</h3>
+        <div class="form-row">
+          <label>账号名</label>
+          <input type="text" id="accName" placeholder="账号备注名" style="width:130px;">
+          <label>银行</label>
+          <input type="text" id="accBank" placeholder="银行名称" style="width:120px;">
+          <label>账号</label>
+          <input type="text" id="accAccount" placeholder="银行账号" style="width:160px;">
+          <label>户主</label>
+          <input type="text" id="accHolder" placeholder="开户名" style="width:120px;">
+          <button class="btn-success" onclick="addAccount()">✅ 添加</button>
+          <button onclick="toggleAddAccount()">取消</button>
+        </div>
+      </div>
+      <div id="accountsList" style="margin-top:16px;"><p class="no-data">加载中...</p></div>
+    </div>
+  </div>
+
+  <script>
+    const adminData = JSON.parse(sessionStorage.getItem('adminUser') || 'null');
+    if (!adminData) window.location.href = '/admin';
+
+    const TOKEN = adminData && adminData.token;
+
+    function authHeaders() {
+      return { 'Content-Type': 'application/json', 'X-Admin-Token': TOKEN || '' };
+    }
+
+    function logout() {
+      sessionStorage.removeItem('adminUser');
+      window.location.href = '/admin';
+    }
+
+    function showToast(msg, type) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast ' + type;
+      t.style.display = 'block';
+      setTimeout(() => t.style.display = 'none', 3000);
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    let rewards = [];
+    let rewardIdCounter = 1;
+
+    function loadRewards() {
+      fetch('/api/admin/config/rewards', { headers: authHeaders() })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) { document.getElementById('rewardsList').innerHTML = '<p class="no-data" style="color:red;">❌ ' + d.error + '</p>'; return; }
+          rewards = d.rewards || [];
+          rewardIdCounter = rewards.reduce((m, r) => Math.max(m, r.id || 0), 0) + 1;
+          renderRewards();
+        })
+        .catch(() => document.getElementById('rewardsList').innerHTML = '<p class="no-data" style="color:red;">❌ 无法连接到服务器</p>');
+    }
+
+    function renderRewards() {
+      if (rewards.length === 0) {
+        document.getElementById('rewardsList').innerHTML = '<p class="no-data">暂无奖品配置</p>';
+        return;
+      }
+      const totalWeight = rewards.reduce((s, r) => s + (parseFloat(r.weight) || 0), 0);
+      let html = '<table><tr><th>图标</th><th>名称</th><th>类型</th><th>价值</th><th>权重</th><th>概率</th><th>操作</th></tr>';
+      rewards.forEach((r, i) => {
+        const prob = totalWeight > 0 ? ((r.weight / totalWeight) * 100).toFixed(2) : '0.00';
+        html += `<tr id="reward-row-${i}">
+          <td><input type="text" class="edit-icon-input" value="${escHtml(r.icon)}" id="r-icon-${i}"></td>
+          <td><input type="text" class="edit-input" value="${escHtml(r.name)}" id="r-name-${i}" style="width:120px;"></td>
+          <td><input type="text" class="edit-input" value="${escHtml(r.type)}" id="r-type-${i}" style="width:80px;"></td>
+          <td><input type="number" class="edit-input" value="${r.value}" id="r-value-${i}" style="width:90px;"></td>
+          <td><input type="number" class="edit-input" value="${r.weight}" id="r-weight-${i}" step="0.01" style="width:70px;" oninput="updateProb()"></td>
+          <td id="r-prob-${i}">${prob}%</td>
+          <td><button class="btn-danger" onclick="removeReward(${i})">🗑️ 删除</button></td>
+        </tr>`;
+      });
+      html += '</table>';
+      document.getElementById('rewardsList').innerHTML = html;
+    }
+
+    function updateProb() {
+      const total = rewards.reduce((s, r, i) => s + (parseFloat(document.getElementById('r-weight-' + i).value) || 0), 0);
+      rewards.forEach((r, i) => {
+        const w = parseFloat(document.getElementById('r-weight-' + i).value) || 0;
+        const prob = total > 0 ? ((w / total) * 100).toFixed(2) : '0.00';
+        const el = document.getElementById('r-prob-' + i);
+        if (el) el.textContent = prob + '%';
+      });
+    }
+
+    function removeReward(i) {
+      if (!confirm('确认删除该奖品吗？')) return;
+      rewards.splice(i, 1);
+      renderRewards();
+    }
+
+    function toggleAddReward() {
+      const f = document.getElementById('addRewardForm');
+      f.classList.toggle('show');
+    }
+
+    function addReward() {
+      const name = document.getElementById('newName').value.trim();
+      const icon = document.getElementById('newIcon').value.trim() || '🎁';
+      const type = document.getElementById('newType').value;
+      const value = parseInt(document.getElementById('newValue').value) || 0;
+      const weight = parseFloat(document.getElementById('newWeight').value) || 1;
+      if (!name) { showToast('❗ 请输入奖品名称', 'error'); return; }
+      const newId = rewardIdCounter++;
+      rewards.push({ id: newId, name, icon, type, value, weight, rarity: 'common', segment: rewards.length });
+      renderRewards();
+      document.getElementById('newName').value = '';
+      document.getElementById('newIcon').value = '';
+      document.getElementById('newValue').value = '';
+      document.getElementById('newWeight').value = '';
+      toggleAddReward();
+    }
+
+    function saveRewards() {
+      const updated = rewards.map((r, i) => ({
+        ...r,
+        icon: document.getElementById('r-icon-' + i) ? document.getElementById('r-icon-' + i).value : r.icon,
+        name: document.getElementById('r-name-' + i) ? document.getElementById('r-name-' + i).value : r.name,
+        type: document.getElementById('r-type-' + i) ? document.getElementById('r-type-' + i).value : r.type,
+        value: document.getElementById('r-value-' + i) ? parseInt(document.getElementById('r-value-' + i).value) || 0 : r.value,
+        weight: document.getElementById('r-weight-' + i) ? parseFloat(document.getElementById('r-weight-' + i).value) || 0 : r.weight,
+      }));
+      fetch('/api/admin/config/rewards', {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ rewards: updated })
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) showToast('❌ ' + d.error, 'error');
+          else { showToast('✅ ' + d.message, 'success'); rewards = updated; renderRewards(); }
+        });
+    }
+
+    function loadDescription() {
+      fetch('/api/admin/config/description', { headers: authHeaders() })
+        .then(r => r.json())
+        .then(d => {
+          if (d.description) document.getElementById('gameDesc').value = d.description;
+        });
+    }
+
+    function saveDescription() {
+      const description = document.getElementById('gameDesc').value.trim();
+      if (!description) { showToast('❗ 说明内容不能为空', 'error'); return; }
+      fetch('/api/admin/config/description', {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ description })
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) showToast('❌ ' + d.error, 'error');
+          else showToast('✅ ' + d.message, 'success');
+        });
+    }
+
+    function loadAccounts() {
+      fetch('/api/admin/payment-accounts', { headers: authHeaders() })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) { document.getElementById('accountsList').innerHTML = '<p class="no-data" style="color:red;">❌ ' + d.error + '</p>'; return; }
+          const accs = d.accounts || [];
+          if (accs.length === 0) {
+            document.getElementById('accountsList').innerHTML = '<p class="no-data">暂无收款账号</p>';
+            return;
+          }
+          let html = '<table class="accounts-table"><tr><th>备注名</th><th>银行</th><th>账号</th><th>户主</th><th>添加时间</th><th>操作</th></tr>';
+          accs.forEach(a => {
+            html += `<tr>
+              <td><strong>${escHtml(a.name)}</strong></td>
+              <td>${escHtml(a.bank)}</td>
+              <td>${escHtml(a.account)}</td>
+              <td>${escHtml(a.holder || '—')}</td>
+              <td>${new Date(a.createdAt).toLocaleString('zh-CN')}</td>
+              <td><button class="btn-danger" onclick="deleteAccount(${a.id})">🗑️ 删除</button></td>
+            </tr>`;
+          });
+          html += '</table>';
+          document.getElementById('accountsList').innerHTML = html;
+        })
+        .catch(() => document.getElementById('accountsList').innerHTML = '<p class="no-data" style="color:red;">❌ 无法连接到服务器</p>');
+    }
+
+    function toggleAddAccount() {
+      document.getElementById('addAccountForm').classList.toggle('show');
+    }
+
+    function addAccount() {
+      const name = document.getElementById('accName').value.trim();
+      const bank = document.getElementById('accBank').value.trim();
+      const account = document.getElementById('accAccount').value.trim();
+      const holder = document.getElementById('accHolder').value.trim();
+      if (!name || !bank || !account) { showToast('❗ 请填写备注名、银行和账号', 'error'); return; }
+      fetch('/api/admin/payment-accounts', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ name, bank, account, holder })
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) showToast('❌ ' + d.error, 'error');
+          else {
+            showToast('✅ ' + d.message, 'success');
+            document.getElementById('accName').value = '';
+            document.getElementById('accBank').value = '';
+            document.getElementById('accAccount').value = '';
+            document.getElementById('accHolder').value = '';
+            toggleAddAccount();
+            loadAccounts();
+          }
+        });
+    }
+
+    function deleteAccount(id) {
+      if (!confirm('确认删除该收款账号吗？')) return;
+      fetch('/api/admin/payment-accounts/' + id, { method: 'DELETE', headers: authHeaders() })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) showToast('❌ ' + d.error, 'error');
+          else { showToast('✅ ' + d.message, 'success'); loadAccounts(); }
+        });
+    }
+
+    loadRewards();
+    loadDescription();
+    loadAccounts();
+  </script>
+</body>
+</html>

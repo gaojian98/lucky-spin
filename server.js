@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const crypto = require("crypto");
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -24,16 +25,41 @@ const REWARDS = [
   { type: "points", name: "1K积分", value: 1000, weight: 30, rarity: "common", icon: "🎟️", segment: 7 }
 ];
 
-const TOTAL_WEIGHT = REWARDS.reduce((sum, r) => sum + r.weight, 0);
+let rewardsConfig = REWARDS.map((r, i) => ({ ...r, id: i + 1 }));
+let gameDescription = "欢迎来到幸运转盘！每次转盘消耗30,000积分，赢取丰厚奖励！祝您好运！";
+let winRecords = [];
+let winRecordIdCounter = 1;
+let managerApplications = [];
+let applicationIdCounter = 1;
+let paymentAccounts = [];
+let paymentAccountIdCounter = 1;
+
 const SPIN_COST = 30000;
 
+function getTotalWeight() {
+  return rewardsConfig.reduce((sum, r) => sum + r.weight, 0);
+}
+
 function selectReward() {
-  let random = Math.random() * TOTAL_WEIGHT;
-  for (let reward of REWARDS) {
+  const totalWeight = getTotalWeight();
+  let random = Math.random() * totalWeight;
+  for (let reward of rewardsConfig) {
     random -= reward.weight;
     if (random <= 0) return reward;
   }
-  return REWARDS[REWARDS.length - 1];
+  return rewardsConfig[rewardsConfig.length - 1];
+}
+
+// 管理员会话管理
+const adminSessions = {}; // token -> { username, role }
+
+function requireAdmin(req, res, next) {
+  const token = req.headers['x-admin-token'];
+  if (!token || !adminSessions[token]) {
+    return res.status(401).json({ error: '请先登录管理后台' });
+  }
+  req.admin = adminSessions[token];
+  next();
 }
 
 app.post("/register", (req, res) => {
@@ -92,13 +118,22 @@ app.post("/spin", (req, res) => {
   
   if (reward.type === "points") {
     user.points += reward.value;
+    user.totalWinnings += reward.value;
   } else if (reward.type === "cash") {
     user.cash += reward.value;
+    user.totalWinnings += reward.value;
   } else if (reward.type === "iphone" || reward.type === "airpods") {
     if (!user.prizes) user.prizes = [];
     user.prizes.push({ type: reward.type, name: reward.name, date: new Date() });
   }
   
+  winRecords.push({
+    id: winRecordIdCounter++,
+    userId,
+    reward: { type: reward.type, name: reward.name, value: reward.value, icon: reward.icon },
+    timestamp: new Date()
+  });
+
   user.lastReward = reward;
   res.json({
     user: { username: userId, points: user.points, cash: user.cash, spinCount: user.spinCount },
@@ -250,7 +285,181 @@ app.post("/api/admin/login", (req, res) => {
   if (!username || !password) return res.json({ error: "请输入账号和密码" });
   const account = ADMIN_ACCOUNTS[username];
   if (!account || account.password !== password) return res.json({ error: "账号或密码错误" });
-  res.json({ username, role: account.role });
+  const token = crypto.randomBytes(32).toString('hex');
+  adminSessions[token] = { username, role: account.role };
+  res.json({ username, role: account.role, token });
+});
+
+// 申请成为管理员
+app.post("/api/admin/apply", (req, res) => {
+  const { username, password, reason } = req.body;
+  if (!username || !password) return res.json({ error: "请输入用户名和密码" });
+  const existing = managerApplications.find(a => a.username === username && a.status === 'pending');
+  if (existing) return res.json({ error: "您已有一个待审核的申请" });
+  const application = {
+    id: applicationIdCounter++,
+    username,
+    password,
+    reason: reason || "",
+    status: "pending",
+    createdAt: new Date(),
+    processedAt: null,
+    processedBy: null
+  };
+  managerApplications.push(application);
+  res.json({ success: true, message: "申请已提交，请等待超级管理员审核", applicationId: application.id });
+});
+
+// 查询申请状态
+app.get("/api/admin/apply/status", (req, res) => {
+  const { username } = req.query;
+  if (!username) return res.json({ error: "请提供用户名" });
+  const application = managerApplications.filter(a => a.username === username).slice(-1)[0];
+  if (!application) return res.json({ status: "none", message: "暂无申请记录" });
+  const msgs = { pending: "审核中，请耐心等待", approved: "申请已通过，请登录", rejected: "申请已拒绝" };
+  res.json({ status: application.status, message: msgs[application.status] || application.status, createdAt: application.createdAt });
+});
+
+// 获取管理员申请列表（需要管理员权限）
+app.get("/api/admin/applications", requireAdmin, (req, res) => {
+  res.json({ applications: managerApplications });
+});
+
+// 批准申请
+app.patch("/api/admin/applications/:id/approve", requireAdmin, (req, res) => {
+  const app_item = managerApplications.find(a => a.id === parseInt(req.params.id));
+  if (!app_item) return res.json({ error: "申请不存在" });
+  if (app_item.status !== 'pending') return res.json({ error: "该申请已处理" });
+  app_item.status = 'approved';
+  app_item.processedAt = new Date();
+  app_item.processedBy = req.admin.username;
+  ADMIN_ACCOUNTS[app_item.username] = { password: app_item.password, role: 'manager' };
+  res.json({ success: true, message: "申请已批准，管理员账号已创建" });
+});
+
+// 拒绝申请
+app.patch("/api/admin/applications/:id/reject", requireAdmin, (req, res) => {
+  const app_item = managerApplications.find(a => a.id === parseInt(req.params.id));
+  if (!app_item) return res.json({ error: "申请不存在" });
+  if (app_item.status !== 'pending') return res.json({ error: "该申请已处理" });
+  app_item.status = 'rejected';
+  app_item.processedAt = new Date();
+  app_item.processedBy = req.admin.username;
+  res.json({ success: true, message: "申请已拒绝" });
+});
+
+// 获取管理员列表
+app.get("/api/admin/managers", requireAdmin, (req, res) => {
+  const list = Object.entries(ADMIN_ACCOUNTS).map(([username, info]) => ({
+    username,
+    role: info.role,
+    createdAt: info.createdAt || null
+  }));
+  res.json({ managers: list });
+});
+
+// 删除管理员
+app.delete("/api/admin/managers/:id", requireAdmin, (req, res) => {
+  const username = req.params.id;
+  if (username === 'admin') return res.json({ error: "不能删除超级管理员" });
+  if (!ADMIN_ACCOUNTS[username]) return res.json({ error: "管理员不存在" });
+  delete ADMIN_ACCOUNTS[username];
+  Object.keys(adminSessions).forEach(token => {
+    if (adminSessions[token].username === username) delete adminSessions[token];
+  });
+  res.json({ success: true, message: "管理员已删除" });
+});
+
+// 重置管理员密码
+app.patch("/api/admin/managers/:id/reset-password", requireAdmin, (req, res) => {
+  const username = req.params.id;
+  if (!ADMIN_ACCOUNTS[username]) return res.json({ error: "管理员不存在" });
+  const newPassword = req.body.newPassword || crypto.randomBytes(6).toString('hex');
+  ADMIN_ACCOUNTS[username].password = newPassword;
+  res.json({ success: true, message: "密码已重置", newPassword });
+});
+
+// 获取奖品配置
+app.get("/api/admin/config/rewards", requireAdmin, (req, res) => {
+  res.json({ rewards: rewardsConfig });
+});
+
+// 更新奖品配置
+app.put("/api/admin/config/rewards", requireAdmin, (req, res) => {
+  const { rewards } = req.body;
+  if (!rewards || !Array.isArray(rewards)) return res.json({ error: "无效的奖品配置" });
+  rewardsConfig = rewards;
+  res.json({ success: true, message: "奖品配置已更新" });
+});
+
+// 获取游戏说明
+app.get("/api/admin/config/description", requireAdmin, (req, res) => {
+  res.json({ description: gameDescription });
+});
+
+// 更新游戏说明
+app.put("/api/admin/config/description", requireAdmin, (req, res) => {
+  const { description } = req.body;
+  if (!description) return res.json({ error: "说明内容不能为空" });
+  gameDescription = description;
+  res.json({ success: true, message: "游戏说明已更新" });
+});
+
+// 统计摘要
+app.get("/api/admin/stats/summary", requireAdmin, (req, res) => {
+  const totalUsers = Object.keys(users).length;
+  const totalSpins = Object.values(users).reduce((sum, u) => sum + (u.spinCount || 0), 0);
+  const totalWinnings = Object.values(users).reduce((sum, u) => sum + (u.totalWinnings || 0), 0);
+  const totalRecharge = rechargeRequests.filter(r => r.status === 'approved').reduce((sum, r) => sum + r.amount, 0);
+  const totalCash = Object.values(users).reduce((sum, u) => sum + (u.cash || 0), 0);
+  res.json({
+    totalUsers,
+    totalSpins,
+    totalWinnings,
+    totalRecharge,
+    totalCash,
+    totalWinRecords: winRecords.length,
+    pendingRecharge: rechargeRequests.filter(r => r.status === 'pending').length
+  });
+});
+
+// 获取中奖记录
+app.get("/api/admin/stats/records", requireAdmin, (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  const sorted = [...winRecords].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  const total = sorted.length;
+  const records = sorted.slice((page - 1) * limit, page * limit);
+  res.json({ total, page, limit, records });
+});
+
+// 获取用户中奖记录
+app.get("/api/admin/stats/user/:userId/records", requireAdmin, (req, res) => {
+  const userRecords = winRecords.filter(r => r.userId === req.params.userId);
+  res.json({ userId: req.params.userId, total: userRecords.length, records: userRecords });
+});
+
+// 获取收款账号列表
+app.get("/api/admin/payment-accounts", requireAdmin, (req, res) => {
+  res.json({ accounts: paymentAccounts });
+});
+
+// 添加收款账号
+app.post("/api/admin/payment-accounts", requireAdmin, (req, res) => {
+  const { name, bank, account, holder } = req.body;
+  if (!name || !bank || !account) return res.json({ error: "请填写账号名称、银行和账号" });
+  const newAccount = { id: paymentAccountIdCounter++, name, bank, account, holder: holder || "", createdAt: new Date() };
+  paymentAccounts.push(newAccount);
+  res.json({ success: true, message: "收款账号已添加", account: newAccount });
+});
+
+// 删除收款账号
+app.delete("/api/admin/payment-accounts/:id", requireAdmin, (req, res) => {
+  const id = parseInt(req.params.id);
+  const idx = paymentAccounts.findIndex(a => a.id === id);
+  if (idx === -1) return res.json({ error: "账号不存在" });
+  paymentAccounts.splice(idx, 1);
+  res.json({ success: true, message: "收款账号已删除" });
 });
 
 const PORT = process.env.PORT || 3000;
