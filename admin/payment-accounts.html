@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Accounts Management</title>
+</head>
+<body>
+    <h1>Payment Accounts Management</h1>
+    <div>
+        <h2>Add Payment Account</h2>
+        <form id="add-account-form">
+            <label for="account-name">Account Name:</label>
+            <input type="text" id="account-name" name="account-name" required>
+            <button type="submit">Add Account</button>
+        </form>
+    </div>
+    <div>
+        <h2>Payment Accounts List</h2>
+        <ul id="accounts-list">
+            <!-- List of payment accounts will be populated here -->
+        </ul>
+    </div>
+    <script>
+        const addAccountForm = document.getElementById('add-account-form');
+        const accountsList = document.getElementById('accounts-list');
+
+        const accounts = [];
+
+        addAccountForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const accountName = document.getElementById('account-name').value;
+            accounts.push(accountName);
+            updateAccountsList();
+            addAccountForm.reset();
+        });
+
+        function updateAccountsList() {
+            accountsList.innerHTML = '';
+            accounts.forEach((account, index) => {
+                const listItem = document.createElement('li');
+                listItem.textContent = account;
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.addEventListener('click', () => {
+                    deleteAccount(index);
+                });
+                listItem.appendChild(deleteButton);
+                accountsList.appendChild(listItem);
+            });
+        }
+
+        function deleteAccount(index) {
+            accounts.splice(index, 1);
+            updateAccountsList();
+        }
+    </script>
+</body>
+</html>
