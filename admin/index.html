@@ -7,247 +7,158 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-        .login-container {
+        .login-card {
             background: white;
             border-radius: 16px;
-            padding: 50px 40px;
-            width: 100%;
-            max-width: 380px;
+            padding: 40px;
+            width: 360px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
-        .login-header {
+        .login-card h1 {
             text-align: center;
-            margin-bottom: 30px;
-        }
-        .login-header h1 {
-            font-size: 1.8rem;
+            font-size: 1.6rem;
             color: #333;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
-        .login-header p {
-            color: #999;
+        .login-card p.subtitle {
+            text-align: center;
+            color: #888;
             font-size: 0.9rem;
+            margin-bottom: 28px;
         }
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
         .form-group label {
             display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
+            margin-bottom: 6px;
+            font-weight: bold;
             color: #555;
             font-size: 0.9rem;
         }
         .form-group input {
             width: 100%;
-            padding: 12px 14px;
-            border: 2px solid #e0e0e0;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
             border-radius: 8px;
             font-size: 1rem;
-            transition: all 0.3s;
+            outline: none;
+            transition: border-color 0.2s;
         }
         .form-group input:focus {
-            outline: none;
             border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
-        .btn-submit {
+        .btn-login {
             width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
             border: none;
             border-radius: 8px;
             font-size: 1rem;
-            font-weight: 600;
             cursor: pointer;
-            margin-top: 10px;
-            transition: all 0.3s;
+            margin-top: 8px;
+            transition: opacity 0.2s;
         }
-        .btn-submit:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
-        .btn-submit:active:not(:disabled) {
-            transform: translateY(0);
-        }
-        .btn-submit:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-        }
-        .message {
-            margin-top: 16px;
-            padding: 12px;
-            border-radius: 6px;
+        .btn-login:hover { opacity: 0.9; }
+        .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+        .error-msg {
+            color: #dc3545;
+            font-size: 0.85rem;
+            margin-top: 12px;
             text-align: center;
-            font-size: 0.9rem;
             display: none;
-        }
-        .message.error {
             background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .message.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .message.loading {
-            background: #e7f3ff;
-            color: #004085;
-            border: 1px solid #b8daff;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 20px;
-            color: #999;
-            font-size: 0.8rem;
+            padding: 10px;
+            border-radius: 4px;
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-header">
-            <h1>🎉 管理后台</h1>
-            <p>幸运转盘系统 v1.0</p>
+    <div class="login-card">
+        <h1>🎉 管理后台</h1>
+        <p class="subtitle">幸运转盘 - 后台管理系统</p>
+        
+        <div class="form-group">
+            <label>管理员账号</label>
+            <input type="text" id="username" placeholder="请输入账号" value="admin">
         </div>
-
-        <form id="loginForm" onsubmit="handleLogin(event)">
-            <div class="form-group">
-                <label for="username">管理员账号</label>
-                <input 
-                    type="text" 
-                    id="username" 
-                    name="username"
-                    placeholder="admin"
-                    autocomplete="off"
-                    required
-                />
-            </div>
-
-            <div class="form-group">
-                <label for="password">管理员密码</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    name="password"
-                    placeholder="admin123"
-                    autocomplete="off"
-                    required
-                />
-            </div>
-
-            <button type="submit" id="submitBtn" class="btn-submit">
-                登 录
-            </button>
-        </form>
-
-        <div id="message" class="message"></div>
-
-        <div class="footer">
-            <p>默认账号: admin / admin123</p>
+        
+        <div class="form-group">
+            <label>密码</label>
+            <input type="password" id="password" placeholder="请输入密码" value="admin123">
         </div>
+        
+        <button class="btn-login" id="loginBtn" onclick="doLogin()">登 录</button>
+        <p class="error-msg" id="errorMsg"></p>
     </div>
 
     <script>
-        window.addEventListener('load', () => {
-            if (localStorage.getItem('adminToken')) {
-                window.location.href = 'dashboard.html';
-            }
-        });
-
-        const form = document.getElementById('loginForm');
-        const submitBtn = document.getElementById('submitBtn');
-        const messageDiv = document.getElementById('message');
-        let isSubmitting = false;
-
-        function showMessage(text, type = 'loading') {
-            messageDiv.textContent = text;
-            messageDiv.className = `message ${type}`;
-            messageDiv.style.display = 'block';
-        }
-
-        function hideMessage() {
-            messageDiv.style.display = 'none';
-        }
-
-        async function handleLogin(event) {
-            event.preventDefault();
-
-            if (isSubmitting) {
-                return;
-            }
-
+        // 防止加载导航菜单
+        // 这是登录页，不需要 nav.js
+        
+        function doLogin() {
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
-
+            const btn = document.getElementById('loginBtn');
+            const errorMsg = document.getElementById('errorMsg');
+            
             if (!username || !password) {
-                showMessage('❗ 账号和密码不能为空', 'error');
+                errorMsg.style.display = 'block';
+                errorMsg.textContent = '❗ 请输入账号和密码';
                 return;
             }
-
-            isSubmitting = true;
-            submitBtn.disabled = true;
-            showMessage('🔐 登录中...', 'loading');
-
-            try {
-                console.log('发送登录请求:', { username });
-                
-                const response = await fetch('/api/admin/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ username, password })
-                });
-
-                const data = await response.json();
-                console.log('登录响应:', data);
-
-                if (data.error) {
-                    showMessage('❌ ' + data.error, 'error');
-                    isSubmitting = false;
-                    submitBtn.disabled = false;
-                    return;
-                }
-
-                if (data.token && data.username) {
+            
+            btn.disabled = true;
+            
+            fetch('/api/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.token) {
                     localStorage.setItem('adminToken', data.token);
                     localStorage.setItem('adminUser', data.username);
-                    
-                    showMessage('✅ 登录成功，跳转中...', 'success');
-                    
+                    errorMsg.style.display = 'block';
+                    errorMsg.textContent = '✅ 登录成功';
+                    errorMsg.style.background = '#d4edda';
+                    errorMsg.style.color = '#155724';
                     setTimeout(() => {
                         window.location.href = 'dashboard.html';
-                    }, 800);
+                    }, 500);
                 } else {
-                    showMessage('❌ 登录失败：服务器响应异常', 'error');
-                    isSubmitting = false;
-                    submitBtn.disabled = false;
+                    errorMsg.style.display = 'block';
+                    errorMsg.textContent = '❌ ' + (data.error || '登录失败');
+                    btn.disabled = false;
                 }
-
-            } catch (error) {
-                console.error('登录错误:', error);
-                showMessage(`❌ 连接失败: ${error.message}`, 'error');
-                isSubmitting = false;
-                submitBtn.disabled = false;
-            }
+            })
+            .catch(error => {
+                errorMsg.style.display = 'block';
+                errorMsg.textContent = '❌ 无法连接到服务器';
+                btn.disabled = false;
+            });
         }
-
-        document.getElementById('username').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') form.dispatchEvent(new Event('submit'));
+        
+        // 回车登录
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                doLogin();
+            }
         });
-        document.getElementById('password').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') form.dispatchEvent(new Event('submit'));
-        });
+        
+        // 检查是否已登录，已登录则跳转
+        if (localStorage.getItem('adminToken')) {
+            window.location.href = 'dashboard.html';
+        }
     </script>
 </body>
 </html>
