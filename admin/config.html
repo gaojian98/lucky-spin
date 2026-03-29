@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Configuration</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Game Configuration</h1>
+    <form>
+        <h2>Edit Rewards</h2>
+        <div>
+            <label for="reward-name">Reward Name:</label>
+            <input type="text" id="reward-name" name="reward-name" required>
+        </div>
+        <div>
+            <label for="reward-value">Reward Value:</label>
+            <input type="number" id="reward-value" name="reward-value" required>
+        </div>
+        <button type="submit">Add Reward</button>
+    </form>
+
+    <form>
+        <h2>Edit Game Description</h2>
+        <div>
+            <label for="game-description">Game Description:</label>
+            <textarea id="game-description" name="game-description" rows="4" required></textarea>
+        </div>
+        <button type="submit">Update Description</button>
+    </form>
+</body>
+</html>
