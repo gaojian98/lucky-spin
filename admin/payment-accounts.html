@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>幸运转盘 - 收款账号管理</title>
+  <link rel="stylesheet" href="/admin/css/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <h1>🎉 幸运转盘 - 管理后台</h1>
+    <div class="nav">
+      <a href="/admin/dashboard.html">🏠 仪表板</a>
+      <a href="/admin/users.html">👥 用户管理</a>
+      <a href="/admin/managers.html">👤 管理员管理</a>
+      <a href="/admin/config.html">🎡 游戏配置</a>
+      <a href="/admin/stats.html">📊 数据统计</a>
+      <a href="/admin/payment-accounts.html" class="active">💳 收款账号</a>
+      <button class="logout" onclick="logout()">退出登录</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- 添加收款账号 -->
+    <div class="section">
+      <h2>➕ 添加收款账号</h2>
+      <div id="alertAdd" class="alert"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>账号名称 *</label>
+          <input type="text" id="addName" placeholder="如：公司支付宝" style="width:180px;">
+        </div>
+        <div class="form-group">
+          <label>银行/支付方式 *</label>
+          <input type="text" id="addBank" placeholder="如：支付宝、建设银行" style="width:180px;">
+        </div>
+        <div class="form-group">
+          <label>账号 *</label>
+          <input type="text" id="addAccount" placeholder="账号或卡号" style="width:220px;">
+        </div>
+        <div class="form-group">
+          <label>持卡人</label>
+          <input type="text" id="addHolder" placeholder="可选" style="width:140px;">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button class="btn-success" onclick="addAccount()">➕ 添加</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 收款账号列表 -->
+    <div class="section">
+      <h2>💳 收款账号列表</h2>
+      <div class="toolbar">
+        <button class="btn-primary btn-sm" onclick="loadAccounts()">🔄 刷新</button>
+      </div>
+      <div id="accountList"><p class="no-data">加载中...</p></div>
+    </div>
+  </div>
+
+  <script>
+    const adminData = JSON.parse(sessionStorage.getItem('adminUser') || 'null');
+    if (!adminData) window.location.href = '/admin';
+    const TOKEN = adminData ? adminData.token : '';
+
+    function logout() { sessionStorage.removeItem('adminUser'); window.location.href = '/admin'; }
+
+    function api(url, opts={}) {
+      return fetch(url, { ...opts, headers: { 'x-admin-token': TOKEN, 'Content-Type': 'application/json', ...(opts.headers||{}) } }).then(r => r.json());
+    }
+
+    function showAlert(id, msg, type='success') {
+      const el = document.getElementById(id);
+      el.className = 'alert alert-' + type;
+      el.textContent = msg;
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display='none'; }, 3500);
+    }
+
+    function loadAccounts() {
+      api('/api/admin/payment-accounts').then(d => {
+        if (d.error) { document.getElementById('accountList').innerHTML = '<p class="no-data" style="color:red;">❌ ' + d.error + '</p>'; return; }
+        const accounts = d.accounts || [];
+        if (!accounts.length) { document.getElementById('accountList').innerHTML = '<p class="no-data">暂无收款账号，请添加</p>'; return; }
+        let html = '<table><thead><tr><th>ID</th><th>账号名称</th><th>银行/方式</th><th>账号</th><th>持卡人</th><th>添加时间</th><th>操作</th></tr></thead><tbody>';
+        accounts.forEach(a => {
+          html += `<tr data-id="${a.id}" data-name="${esc(a.name)}">
+            <td>${a.id}</td>
+            <td><strong>${esc(a.name)}</strong></td>
+            <td>${esc(a.bank)}</td>
+            <td><code style="background:#f4f4f4;padding:2px 6px;border-radius:4px;">${esc(a.account)}</code></td>
+            <td>${esc(a.holder||'-')}</td>
+            <td>${new Date(a.createdAt).toLocaleDateString('zh-CN')}</td>
+            <td><button class="btn-danger btn-sm js-delete-account" data-id="${a.id}" data-name="${esc(a.name)}">🗑️ 删除</button></td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        document.getElementById('accountList').innerHTML = html;
+        document.querySelectorAll('.js-delete-account').forEach(btn => {
+          btn.addEventListener('click', () => deleteAccount(parseInt(btn.dataset.id), btn.dataset.name));
+        });
+      });
+    }
+
+    function addAccount() {
+      const name = document.getElementById('addName').value.trim();
+      const bank = document.getElementById('addBank').value.trim();
+      const account = document.getElementById('addAccount').value.trim();
+      const holder = document.getElementById('addHolder').value.trim();
+      if (!name || !bank || !account) { showAlert('alertAdd', '❌ 请填写账号名称、银行和账号', 'danger'); return; }
+      api('/api/admin/payment-accounts', { method: 'POST', body: JSON.stringify({ name, bank, account, holder }) }).then(d => {
+        if (d.error) { showAlert('alertAdd', '❌ ' + d.error, 'danger'); }
+        else {
+          showAlert('alertAdd', '✅ ' + d.message, 'success');
+          document.getElementById('addName').value = '';
+          document.getElementById('addBank').value = '';
+          document.getElementById('addAccount').value = '';
+          document.getElementById('addHolder').value = '';
+          loadAccounts();
+        }
+      });
+    }
+
+    function deleteAccount(id, name) {
+      if (!confirm('确认删除收款账号 "' + name + '" 吗？')) return;
+      api('/api/admin/payment-accounts/' + id, { method: 'DELETE' }).then(d => {
+        if (d.error) alert('❌ ' + d.error);
+        else { showAlert('alertAdd', '✅ ' + d.message, 'success'); loadAccounts(); }
+      });
+    }
+
+    function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    loadAccounts();
+  </script>
+</body>
+</html>

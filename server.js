@@ -66,6 +66,7 @@ app.post("/register", (req, res) => {
   const { userId, password, phone, bank } = req.body;
   if (!userId || userId.trim() === "") return res.json({ error: "请输入用户名" });
   if (users[userId]) {
+    if (users[userId].status === 'frozen') return res.json({ error: "该账号已被冻结，请联系管理员" });
     return res.json({
       username: userId,
       points: users[userId].points,
@@ -82,7 +83,10 @@ app.post("/register", (req, res) => {
     spinCount: 0,
     totalWinnings: 0,
     prizes: [],
-    createdAt: new Date()
+    status: 'normal',
+    createdAt: new Date(),
+    freezeAt: null,
+    freezeReason: ""
   };
   res.json({
     username: userId,
@@ -110,6 +114,8 @@ app.post("/spin", (req, res) => {
   if (!userId || !users[userId]) return res.json({ error: "请先登录" });
   
   const user = users[userId];
+  if (user.status === 'frozen') return res.json({ error: "账号已被冻结，请联系管理员" });
+  if (user.status === 'deleted') return res.json({ error: "账号不存在" });
   if (user.points < SPIN_COST) return res.json({ error: "积分不足" });
   
   user.points -= SPIN_COST;
@@ -130,7 +136,7 @@ app.post("/spin", (req, res) => {
   winRecords.push({
     id: winRecordIdCounter++,
     userId,
-    reward: { type: reward.type, name: reward.name, value: reward.value, icon: reward.icon },
+    reward: { type: reward.type, name: reward.name, value: reward.value, icon: reward.icon, rarity: reward.rarity },
     timestamp: new Date()
   });
 
@@ -423,13 +429,24 @@ app.get("/api/admin/stats/summary", requireAdmin, (req, res) => {
   });
 });
 
-// 获取中奖记录
+// 获取中奖记录（支持rarity筛选和时间范围）
 app.get("/api/admin/stats/records", requireAdmin, (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
-  const sorted = [...winRecords].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  const total = sorted.length;
-  const records = sorted.slice((page - 1) * limit, page * limit);
+  const rarity = req.query.rarity || "";
+  const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
+  const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+  let filtered = [...winRecords];
+  if (rarity) filtered = filtered.filter(r => r.reward.rarity === rarity);
+  if (startDate) filtered = filtered.filter(r => new Date(r.timestamp) >= startDate);
+  if (endDate) {
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    filtered = filtered.filter(r => new Date(r.timestamp) <= end);
+  }
+  filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  const total = filtered.length;
+  const records = filtered.slice((page - 1) * limit, page * limit);
   res.json({ total, page, limit, records });
 });
 
@@ -460,6 +477,106 @@ app.delete("/api/admin/payment-accounts/:id", requireAdmin, (req, res) => {
   if (idx === -1) return res.json({ error: "账号不存在" });
   paymentAccounts.splice(idx, 1);
   res.json({ success: true, message: "收款账号已删除" });
+});
+
+// 获取用户列表
+app.get("/api/admin/users", requireAdmin, (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  const search = (req.query.search || "").toLowerCase();
+  let list = Object.entries(users)
+    .filter(([uid]) => !search || uid.toLowerCase().includes(search))
+    .map(([uid, u]) => ({
+      userId: uid,
+      points: u.points,
+      cash: u.cash,
+      spinCount: u.spinCount,
+      status: u.status || 'normal',
+      createdAt: u.createdAt,
+      freezeAt: u.freezeAt || null,
+      freezeReason: u.freezeReason || ""
+    }));
+  const total = list.length;
+  const items = list.slice((page - 1) * limit, page * limit);
+  res.json({ total, page, limit, users: items });
+});
+
+// 删除用户
+app.delete("/api/admin/users/:userId", requireAdmin, (req, res) => {
+  const uid = req.params.userId;
+  if (!users[uid]) return res.json({ error: "用户不存在" });
+  users[uid].status = 'deleted';
+  res.json({ success: true, message: "用户已删除" });
+});
+
+// 冻结用户
+app.patch("/api/admin/users/:userId/freeze", requireAdmin, (req, res) => {
+  const uid = req.params.userId;
+  if (!users[uid]) return res.json({ error: "用户不存在" });
+  if (users[uid].status === 'deleted') return res.json({ error: "用户已被删除" });
+  if (users[uid].status === 'frozen') return res.json({ error: "用户已被冻结" });
+  users[uid].status = 'frozen';
+  users[uid].freezeAt = new Date();
+  users[uid].freezeReason = req.body.reason || "管理员冻结";
+  res.json({ success: true, message: "用户已冻结" });
+});
+
+// 解冻用户
+app.patch("/api/admin/users/:userId/unfreeze", requireAdmin, (req, res) => {
+  const uid = req.params.userId;
+  if (!users[uid]) return res.json({ error: "用户不存在" });
+  if (users[uid].status !== 'frozen') return res.json({ error: "用户未被冻结" });
+  users[uid].status = 'normal';
+  users[uid].freezeAt = null;
+  users[uid].freezeReason = "";
+  res.json({ success: true, message: "用户已解冻" });
+});
+
+// 重置用户密码
+app.patch("/api/admin/users/:userId/reset-password", requireAdmin, (req, res) => {
+  const uid = req.params.userId;
+  if (!users[uid]) return res.json({ error: "用户不存在" });
+  if (users[uid].status === 'deleted') return res.json({ error: "用户已被删除" });
+  const newPassword = req.body.newPassword || crypto.randomBytes(6).toString('hex');
+  users[uid].password = newPassword;
+  res.json({ success: true, message: "密码已重置", newPassword });
+});
+
+// 日报
+app.get("/api/admin/stats/reports/daily", requireAdmin, (req, res) => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dayRecords = winRecords.filter(r => new Date(r.timestamp) >= start);
+  const totalSpins = dayRecords.length;
+  const totalWinValue = dayRecords.reduce((s, r) => s + (r.reward.value || 0), 0);
+  const highValue = dayRecords.filter(r => r.reward.rarity === 'legendary' || r.reward.rarity === 'epic').length;
+  const newUsers = Object.values(users).filter(u => u.createdAt && new Date(u.createdAt) >= start).length;
+  res.json({ period: 'daily', date: start.toISOString().slice(0,10), totalSpins, totalWinValue, highValue, newUsers });
+});
+
+// 周报
+app.get("/api/admin/stats/reports/weekly", requireAdmin, (req, res) => {
+  const now = new Date();
+  const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1;
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek);
+  const weekRecords = winRecords.filter(r => new Date(r.timestamp) >= start);
+  const totalSpins = weekRecords.length;
+  const totalWinValue = weekRecords.reduce((s, r) => s + (r.reward.value || 0), 0);
+  const highValue = weekRecords.filter(r => r.reward.rarity === 'legendary' || r.reward.rarity === 'epic').length;
+  const newUsers = Object.values(users).filter(u => u.createdAt && new Date(u.createdAt) >= start).length;
+  res.json({ period: 'weekly', startDate: start.toISOString().slice(0,10), totalSpins, totalWinValue, highValue, newUsers });
+});
+
+// 月报
+app.get("/api/admin/stats/reports/monthly", requireAdmin, (req, res) => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthRecords = winRecords.filter(r => new Date(r.timestamp) >= start);
+  const totalSpins = monthRecords.length;
+  const totalWinValue = monthRecords.reduce((s, r) => s + (r.reward.value || 0), 0);
+  const highValue = monthRecords.filter(r => r.reward.rarity === 'legendary' || r.reward.rarity === 'epic').length;
+  const newUsers = Object.values(users).filter(u => u.createdAt && new Date(u.createdAt) >= start).length;
+  res.json({ period: 'monthly', month: start.toISOString().slice(0,7), totalSpins, totalWinValue, highValue, newUsers });
 });
 
 const PORT = process.env.PORT || 3000;

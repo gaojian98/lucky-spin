@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>幸运转盘 - 数据统计</title>
+  <link rel="stylesheet" href="/admin/css/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <h1>🎉 幸运转盘 - 管理后台</h1>
+    <div class="nav">
+      <a href="/admin/dashboard.html">🏠 仪表板</a>
+      <a href="/admin/users.html">👥 用户管理</a>
+      <a href="/admin/managers.html">👤 管理员管理</a>
+      <a href="/admin/config.html">🎡 游戏配置</a>
+      <a href="/admin/stats.html" class="active">📊 数据统计</a>
+      <a href="/admin/payment-accounts.html">💳 收款账号</a>
+      <button class="logout" onclick="logout()">退出登录</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- 统计摘要 -->
+    <div class="stats-grid" id="summaryGrid">
+      <div class="stat-card"><div class="label">总用户数</div><div class="value" id="s-users">-</div></div>
+      <div class="stat-card"><div class="label">总转盘次数</div><div class="value" id="s-spins">-</div></div>
+      <div class="stat-card"><div class="label">总赢取价值</div><div class="value" id="s-wins">-</div></div>
+      <div class="stat-card"><div class="label">中奖记录数</div><div class="value" id="s-records">-</div></div>
+      <div class="stat-card"><div class="label">待审充值</div><div class="value" id="s-pending" style="color:#856404;">-</div></div>
+      <div class="stat-card"><div class="label">用户总现金</div><div class="value" id="s-cash">-</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('global')">🌍 全局中奖记录</button>
+      <button class="tab-btn" onclick="switchTab('user')">👤 单用户记录</button>
+      <button class="tab-btn" onclick="switchTab('reports')">📈 统计报表</button>
+      <button class="tab-btn" onclick="switchTab('recharge')">💰 充值统计</button>
+    </div>
+
+    <!-- 全局中奖记录 -->
+    <div class="tab-content active" id="tab-global">
+      <div class="section">
+        <h2>🌍 全局中奖记录</h2>
+        <div class="toolbar">
+          <select id="rarityFilter" onchange="loadGlobal(1)">
+            <option value="">全部稀有度</option>
+            <option value="legendary">🏆 传奇</option>
+            <option value="epic">💜 史诗</option>
+            <option value="rare">💙 稀有</option>
+            <option value="common">⬜ 普通</option>
+          </select>
+          <input type="date" id="startDate" onchange="loadGlobal(1)">
+          <span style="color:#888;font-size:0.85rem;">至</span>
+          <input type="date" id="endDate" onchange="loadGlobal(1)">
+          <button class="btn-secondary btn-sm" onclick="clearGlobalFilters()">清除筛选</button>
+          <button class="btn-primary btn-sm" onclick="exportGlobal()">📥 导出CSV</button>
+        </div>
+        <div id="globalList"><p class="no-data">加载中...</p></div>
+        <div class="pagination" id="globalPagination"></div>
+      </div>
+    </div>
+
+    <!-- 单用户记录 -->
+    <div class="tab-content" id="tab-user">
+      <div class="section">
+        <h2>👤 单用户中奖记录</h2>
+        <div class="toolbar">
+          <input type="search" id="userSearchInput" placeholder="输入用户名查询">
+          <button class="btn-primary" onclick="loadUserRecords()">查询</button>
+        </div>
+        <div id="userRecordsList"><p class="no-data">请输入用户名后查询</p></div>
+      </div>
+    </div>
+
+    <!-- 统计报表 -->
+    <div class="tab-content" id="tab-reports">
+      <div class="section">
+        <h2>📈 统计报表</h2>
+        <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+          <button class="btn-primary" onclick="loadReport('daily')">📅 今日日报</button>
+          <button class="btn-info" onclick="loadReport('weekly')">📆 本周周报</button>
+          <button class="btn-secondary" onclick="loadReport('monthly')">📊 本月月报</button>
+          <button class="btn-success btn-sm" onclick="exportReport()" id="exportReportBtn" style="display:none;">📥 导出CSV</button>
+        </div>
+        <div id="reportContent"><p class="no-data">请选择报表类型</p></div>
+      </div>
+    </div>
+
+    <!-- 充值统计 -->
+    <div class="tab-content" id="tab-recharge">
+      <div class="section">
+        <h2>💰 充值提现统计</h2>
+        <div id="rechargeStats"><p class="no-data">加载中...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const adminData = JSON.parse(sessionStorage.getItem('adminUser') || 'null');
+    if (!adminData) window.location.href = '/admin';
+    const TOKEN = adminData ? adminData.token : '';
+    let globalPage = 1, globalTotal = 0;
+    let currentReport = null;
+    let cachedGlobalRecords = [];
+
+    function logout() { sessionStorage.removeItem('adminUser'); window.location.href = '/admin'; }
+
+    function api(url, opts={}) {
+      return fetch(url, { ...opts, headers: { 'x-admin-token': TOKEN, 'Content-Type': 'application/json', ...(opts.headers||{}) } }).then(r => r.json());
+    }
+
+    function switchTab(tab) {
+      const tabs = ['global','user','reports','recharge'];
+      document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', tabs[i] === tab));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + tab));
+      if (tab === 'global') loadGlobal(1);
+      else if (tab === 'recharge') loadRechargeStats();
+    }
+
+    function loadSummary() {
+      api('/api/admin/stats/summary').then(d => {
+        if (d.error) return;
+        document.getElementById('s-users').textContent = d.totalUsers;
+        document.getElementById('s-spins').textContent = d.totalSpins.toLocaleString();
+        document.getElementById('s-wins').textContent = d.totalWinnings.toLocaleString();
+        document.getElementById('s-records').textContent = d.totalWinRecords;
+        document.getElementById('s-pending').textContent = d.pendingRecharge;
+        document.getElementById('s-cash').textContent = d.totalCash.toLocaleString();
+      });
+    }
+
+    function loadGlobal(page) {
+      globalPage = page;
+      const rarity = document.getElementById('rarityFilter').value;
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      const params = new URLSearchParams({ page, limit: 20 });
+      if (rarity) params.set('rarity', rarity);
+      if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
+      api('/api/admin/stats/records?' + params).then(d => {
+        if (d.error) { document.getElementById('globalList').innerHTML = '<p class="no-data" style="color:red;">❌ ' + d.error + '</p>'; return; }
+        globalTotal = d.total;
+        cachedGlobalRecords = d.records;
+        renderGlobalRecords(d);
+      });
+    }
+
+    const rarityBadge = { legendary: ['badge-legendary','🏆 传奇'], epic: ['badge-epic','💜 史诗'], rare: ['badge-rare','💙 稀有'], common: ['badge-common','⬜ 普通'] };
+
+    function renderGlobalRecords(d) {
+      if (!d.records.length) { document.getElementById('globalList').innerHTML = '<p class="no-data">暂无记录</p>'; document.getElementById('globalPagination').innerHTML=''; return; }
+      let html = '<table><thead><tr><th>ID</th><th>用户</th><th>奖品</th><th>价值</th><th>稀有度</th><th>时间</th></tr></thead><tbody>';
+      d.records.forEach(r => {
+        const [cls, txt] = rarityBadge[r.reward.rarity] || ['',''];
+        html += `<tr>
+          <td>${r.id}</td>
+          <td><strong>${esc(r.userId)}</strong></td>
+          <td>${r.reward.icon||''} ${esc(r.reward.name)}</td>
+          <td>${(r.reward.value||0).toLocaleString()}</td>
+          <td><span class="badge ${cls}">${txt}</span></td>
+          <td>${new Date(r.timestamp).toLocaleString('zh-CN')}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      document.getElementById('globalList').innerHTML = html;
+      const totalPages = Math.ceil(d.total / 20) || 1;
+      let pg = `<button onclick="loadGlobal(1)" ${globalPage===1?'disabled':''}>«</button>`;
+      pg += `<button onclick="loadGlobal(${globalPage-1})" ${globalPage===1?'disabled':''}>‹</button>`;
+      pg += `<span class="page-info">第 ${globalPage} / ${totalPages} 页，共 ${d.total} 条</span>`;
+      pg += `<button onclick="loadGlobal(${globalPage+1})" ${globalPage>=totalPages?'disabled':''}>›</button>`;
+      pg += `<button onclick="loadGlobal(${totalPages})" ${globalPage>=totalPages?'disabled':''}>»</button>`;
+      document.getElementById('globalPagination').innerHTML = pg;
+    }
+
+    function clearGlobalFilters() {
+      document.getElementById('rarityFilter').value = '';
+      document.getElementById('startDate').value = '';
+      document.getElementById('endDate').value = '';
+      loadGlobal(1);
+    }
+
+    function exportGlobal() {
+      if (!cachedGlobalRecords.length) { alert('暂无数据可导出'); return; }
+      let csv = 'ID,用户,奖品,价值,稀有度,时间\n';
+      cachedGlobalRecords.forEach(r => {
+        csv += [r.id, csvField(r.userId), csvField(r.reward.name), r.reward.value||0, csvField(r.reward.rarity||''), csvField(new Date(r.timestamp).toLocaleString('zh-CN'))].join(',') + '\n';
+      });
+      downloadCSV(csv, 'win-records.csv');
+    }
+
+    function loadUserRecords() {
+      const userId = document.getElementById('userSearchInput').value.trim();
+      if (!userId) { alert('❗ 请输入用户名'); return; }
+      api('/api/admin/stats/user/' + encodeURIComponent(userId) + '/records').then(d => {
+        if (d.error) { document.getElementById('userRecordsList').innerHTML = '<p class="no-data" style="color:red;">❌ ' + d.error + '</p>'; return; }
+        if (!d.records.length) { document.getElementById('userRecordsList').innerHTML = '<p class="no-data">该用户暂无中奖记录</p>'; return; }
+        let html = `<p style="margin-bottom:10px;color:#666;font-size:0.88rem;">用户 <strong>${esc(userId)}</strong> 共有 <strong>${d.total}</strong> 条中奖记录</p>`;
+        html += '<table><thead><tr><th>ID</th><th>奖品</th><th>价值</th><th>稀有度</th><th>时间</th></tr></thead><tbody>';
+        d.records.forEach(r => {
+          const [cls, txt] = rarityBadge[r.reward.rarity] || ['',''];
+          html += `<tr>
+            <td>${r.id}</td>
+            <td>${r.reward.icon||''} ${esc(r.reward.name)}</td>
+            <td>${(r.reward.value||0).toLocaleString()}</td>
+            <td><span class="badge ${cls}">${txt}</span></td>
+            <td>${new Date(r.timestamp).toLocaleString('zh-CN')}</td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        document.getElementById('userRecordsList').innerHTML = html;
+      });
+    }
+
+    function loadReport(period) {
+      document.getElementById('reportContent').innerHTML = '<p class="no-data">加载中...</p>';
+      document.getElementById('exportReportBtn').style.display = 'none';
+      api('/api/admin/stats/reports/' + period).then(d => {
+        if (d.error) { document.getElementById('reportContent').innerHTML = '<p class="no-data" style="color:red;">❌ ' + d.error + '</p>'; return; }
+        currentReport = d;
+        const periodLabel = { daily:'今日日报', weekly:'本周周报', monthly:'本月月报' }[period];
+        const dateInfo = d.date || d.startDate || d.month;
+        let html = `<p style="color:#666;font-size:0.88rem;margin-bottom:14px;">📅 ${periodLabel}（${dateInfo}）</p>`;
+        html += `<div class="report-grid">
+          <div class="report-item"><div class="r-label">转盘次数</div><div class="r-value">${d.totalSpins.toLocaleString()}</div></div>
+          <div class="report-item"><div class="r-label">总赢取价值</div><div class="r-value">${d.totalWinValue.toLocaleString()}</div></div>
+          <div class="report-item"><div class="r-label">高价值奖品</div><div class="r-value">${d.highValue}</div></div>
+          <div class="report-item"><div class="r-label">新增用户</div><div class="r-value">${d.newUsers}</div></div>
+        </div>`;
+        document.getElementById('reportContent').innerHTML = html;
+        document.getElementById('exportReportBtn').style.display = 'inline-block';
+      });
+    }
+
+    function exportReport() {
+      if (!currentReport) return;
+      const period = currentReport.period;
+      const dateInfo = currentReport.date || currentReport.startDate || currentReport.month;
+      let csv = `报表类型,周期,转盘次数,总赢取价值,高价值奖品数,新增用户\n`;
+      csv += [csvField(period), csvField(dateInfo), currentReport.totalSpins, currentReport.totalWinValue, currentReport.highValue, currentReport.newUsers].join(',') + '\n';
+      downloadCSV(csv, `report-${period}-${dateInfo}.csv`);
+    }
+
+    function loadRechargeStats() {
+      Promise.all([
+        fetch('/recharge/requests').then(r => r.json()),
+        api('/api/admin/stats/summary')
+      ]).then(([recharge, summary]) => {
+        const pending = recharge.requests ? recharge.requests.filter(r => r.status === 'pending').length : 0;
+        const approved = recharge.requests ? recharge.requests.filter(r => r.status === 'approved') : [];
+        const approvedTotal = approved.reduce((s, r) => s + r.amount, 0);
+        let html = `<div class="report-grid">
+          <div class="report-item"><div class="r-label">待审核充值申请</div><div class="r-value" style="color:#856404;">${pending}</div></div>
+          <div class="report-item"><div class="r-label">已批准充值总积分</div><div class="r-value" style="color:#155724;">${approvedTotal.toLocaleString()}</div></div>
+          <div class="report-item"><div class="r-label">充值申请总数</div><div class="r-value">${recharge.total||0}</div></div>
+          <div class="report-item"><div class="r-label">用户总现金(盾)</div><div class="r-value">${(summary.totalCash||0).toLocaleString()}</div></div>
+        </div>`;
+        if (recharge.requests && recharge.requests.length) {
+          const methodMap = { momo:'📱 MoMo', bank:'🏦 银行', zalo:'💬 Zalo', account_cash:'💳 账户现金' };
+          const statusMap = { pending:['badge-pending','⏳ 待审核'], approved:['badge-approved','✅ 已批准'], rejected:['badge-rejected','❌ 已拒绝'] };
+          html += '<h3 style="font-size:0.95rem;color:#444;margin:16px 0 10px;">充值申请明细</h3>';
+          html += '<table><thead><tr><th>ID</th><th>用户</th><th>金额(积分)</th><th>方式</th><th>状态</th><th>时间</th></tr></thead><tbody>';
+          recharge.requests.forEach(r => {
+            const [cls, txt] = statusMap[r.status] || ['',''];
+            html += `<tr><td>${r.id}</td><td>${esc(r.userId)}</td><td>${r.amount.toLocaleString()}</td><td>${methodMap[r.method]||r.method}</td><td><span class="badge ${cls}">${txt}</span></td><td>${new Date(r.createdAt).toLocaleString('zh-CN')}</td></tr>`;
+          });
+          html += '</tbody></table>';
+        }
+        document.getElementById('rechargeStats').innerHTML = html;
+      }).catch(() => { document.getElementById('rechargeStats').innerHTML = '<p class="no-data" style="color:red;">❌ 加载失败</p>'; });
+    }
+
+    function downloadCSV(csv, filename) {
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function csvField(val) {
+      const s = String(val == null ? '' : val);
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+
+    function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    loadSummary();
+    loadGlobal(1);
+  </script>
+</body>
+</html>
