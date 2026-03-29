@@ -1,15 +1,23 @@
 // 检查权限 - 只在非登录页执行
 function checkAdminAuth() {
     const currentPage = window.location.pathname.split('/').pop();
+    const token = localStorage.getItem('adminToken');
+    
+    console.log('🔍 权限检查:');
+    console.log('  当前页面:', currentPage);
+    console.log('  Token:', token ? '✅ 存在' : '❌ 不存在');
     
     // 登录页不需要检查
-    if (currentPage === 'index.html' || currentPage === '') {
+    if (currentPage === 'index.html' || currentPage === '' || currentPage === 'admin/') {
+        console.log('  → 登录页，跳过检查');
         return;
     }
     
-    if (!localStorage.getItem('adminToken')) {
-        // 自动重定向到登录页
+    if (!token) {
+        console.log('  → 无 Token，重定向到登录页');
         window.location.href = 'index.html';
+    } else {
+        console.log('  → ✅ 权限验证通过');
     }
 }
 
@@ -128,7 +136,7 @@ function logoutAdmin() {
     }
 }
 
-// 只在非登录页加载导航和检查权限
+// 页面加载完后执行权限检查
 document.addEventListener('DOMContentLoaded', () => {
     const currentPage = window.location.pathname.split('/').pop();
     
