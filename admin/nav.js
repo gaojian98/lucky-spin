@@ -1,3 +1,11 @@
+// 检查权限
+function checkAdminAuth() {
+    if (!localStorage.getItem('adminToken')) {
+        // 自动重定向到登录页，而不是弹窗
+        window.location.href = 'index.html';
+    }
+}
+
 // 创建统一导航菜单
 function createNavigation() {
     const adminUser = localStorage.getItem('adminUser') || '管理员';
@@ -109,14 +117,6 @@ function logoutAdmin() {
     if (confirm('确定要退出登录吗?')) {
         localStorage.removeItem('adminToken');
         localStorage.removeItem('adminUser');
-        window.location.href = 'index.html';
-    }
-}
-
-// 检查权限
-function checkAdminAuth() {
-    if (!localStorage.getItem('adminToken')) {
-        alert('⚠️ 请先登录');
         window.location.href = 'index.html';
     }
 }
