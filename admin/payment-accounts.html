@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>幸运转盘 - 收款账号管理</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; }
+    .topbar {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .topbar h1 { font-size: 1.2rem; }
+    .topbar .nav a {
+      color: white;
+      text-decoration: none;
+      margin-left: 14px;
+      font-size: 0.88rem;
+      opacity: 0.85;
+    }
+    .topbar .nav a:hover { opacity: 1; }
+    .topbar .logout {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-left: 14px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      margin-bottom: 24px;
+    }
+    .section h2 { font-size: 1.1rem; margin-bottom: 16px; color: #444; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+    th { background: #f9f9f9; font-weight: 600; color: #555; }
+    input[type="text"] {
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus { border-color: #667eea; }
+    button { padding: 7px 16px; margin: 2px; cursor: pointer; border: none; border-radius: 6px; font-size: 0.85rem; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-danger { background: #dc3545; color: white; }
+    .no-data { text-align: center; color: #aaa; padding: 24px; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .form-group label { display: block; margin-bottom: 4px; font-size: 0.88rem; color: #555; font-weight: bold; }
+    .form-group input { width: 100%; }
+    .msg {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      margin-top: 12px;
+      display: none;
+    }
+    .msg-success { background: #d4edda; color: #155724; }
+    .msg-error { background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>🎉 幸运转盘 - 管理后台</h1>
+    <div class="nav">
+      <a href="/admin/dashboard.html">仪表板</a>
+      <a href="/admin/users.html">用户管理</a>
+      <a href="/admin/applications.html">申请审核</a>
+      <a href="/admin/managers.html">管理员</a>
+      <a href="/admin/config.html">配置</a>
+      <a href="/admin/stats.html">统计</a>
+      <a href="/admin/payment-accounts.html">收款账号</a>
+      <button class="logout" onclick="logout()">退出登录</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <div class="section">
+      <h2>➕ 添加收款账号</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>账号名称 *</label>
+          <input type="text" id="accName" placeholder="例如：主收款账号">
+        </div>
+        <div class="form-group">
+          <label>银行 / 支付方式 *</label>
+          <input type="text" id="accBank" placeholder="例如：MoMo、银行转账">
+        </div>
+        <div class="form-group">
+          <label>账号 / 卡号 *</label>
+          <input type="text" id="accNumber" placeholder="输入账号或卡号">
+        </div>
+        <div class="form-group">
+          <label>持有人</label>
+          <input type="text" id="accHolder" placeholder="账户持有人姓名">
+        </div>
+      </div>
+      <button class="btn-success" onclick="addAccount()">➕ 添加账号</button>
+      <div class="msg" id="addMsg"></div>
+    </div>
+
+    <div class="section">
+      <h2>💳 收款账号列表</h2>
+      <div id="accountsList"><p class="no-data">加载中...</p></div>
+    </div>
+
+  </div>
+
+  <script>
+    const adminData = JSON.parse(sessionStorage.getItem('adminUser') || 'null');
+    if (!adminData) {
+      window.location.href = '/admin';
+    }
+
+    function logout() {
+      sessionStorage.removeItem('adminUser');
+      window.location.href = '/admin';
+    }
+
+    function showMsg(id, text, type) {
+      const el = document.getElementById(id);
+      el.className = 'msg msg-' + type;
+      el.textContent = text;
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+
+    function loadAccounts() {
+      fetch('/api/admin/payment-accounts', {
+        headers: { 'x-admin-token': adminData.token }
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) {
+          document.getElementById('accountsList').innerHTML = '<p class="no-data" style="color:red;">❌ ' + d.error + '</p>';
+          return;
+        }
+        const accounts = d.accounts;
+        if (!accounts || accounts.length === 0) {
+          document.getElementById('accountsList').innerHTML = '<p class="no-data">暂无收款账号</p>';
+          return;
+        }
+        let html = '<table><tr><th>ID</th><th>账号名称</th><th>银行/方式</th><th>账号</th><th>持有人</th><th>添加时间</th><th>操作</th></tr>';
+        accounts.forEach(a => {
+          html += `<tr>
+            <td>${a.id}</td>
+            <td><strong>${a.name}</strong></td>
+            <td>${a.bank}</td>
+            <td><code style="background:#f5f5f5;padding:2px 6px;border-radius:4px;">${a.account}</code></td>
+            <td>${a.holder || '-'}</td>
+            <td>${new Date(a.createdAt).toLocaleString('zh-CN')}</td>
+            <td><button class="btn-danger" onclick="deleteAccount(${a.id}, '${a.name}')">🗑️ 删除</button></td>
+          </tr>`;
+        });
+        html += '</table>';
+        document.getElementById('accountsList').innerHTML = html;
+      })
+      .catch(() => {
+        document.getElementById('accountsList').innerHTML = '<p class="no-data" style="color:red;">❌ 无法连接到服务器</p>';
+      });
+    }
+
+    function addAccount() {
+      const name = document.getElementById('accName').value.trim();
+      const bank = document.getElementById('accBank').value.trim();
+      const account = document.getElementById('accNumber').value.trim();
+      const holder = document.getElementById('accHolder').value.trim();
+
+      if (!name) { showMsg('addMsg', '❗ 请填写账号名称', 'error'); return; }
+      if (!bank) { showMsg('addMsg', '❗ 请填写银行/支付方式', 'error'); return; }
+      if (!account) { showMsg('addMsg', '❗ 请填写账号', 'error'); return; }
+
+      fetch('/api/admin/payment-accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminData.token },
+        body: JSON.stringify({ name, bank, account, holder })
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) {
+          showMsg('addMsg', '❌ ' + d.error, 'error');
+        } else {
+          showMsg('addMsg', '✅ ' + d.message, 'success');
+          document.getElementById('accName').value = '';
+          document.getElementById('accBank').value = '';
+          document.getElementById('accNumber').value = '';
+          document.getElementById('accHolder').value = '';
+          loadAccounts();
+        }
+      })
+      .catch(() => showMsg('addMsg', '❌ 无法连接到服务器', 'error'));
+    }
+
+    function deleteAccount(id, name) {
+      if (!confirm('确认删除收款账号 "' + name + '"？')) return;
+      fetch('/api/admin/payment-accounts/' + id, {
+        method: 'DELETE',
+        headers: { 'x-admin-token': adminData.token }
+      })
+      .then(r => r.json())
+      .then(d => {
+        alert(d.error ? '❌ ' + d.error : '✅ ' + d.message);
+        loadAccounts();
+      });
+    }
+
+    loadAccounts();
+  </script>
+</body>
+</html>

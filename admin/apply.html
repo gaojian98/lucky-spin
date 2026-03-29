@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>幸运转盘 - 申请管理员</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .card h1 { text-align: center; font-size: 1.5rem; color: #333; margin-bottom: 8px; }
+    .card p.subtitle { text-align: center; color: #888; font-size: 0.9rem; margin-bottom: 28px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 6px; font-weight: bold; color: #555; font-size: 0.9rem; }
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus { border-color: #667eea; }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .btn-submit {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.2s;
+    }
+    .btn-submit:hover { opacity: 0.9; }
+    .btn-check {
+      width: 100%;
+      padding: 10px;
+      background: #f0f4ff;
+      color: #667eea;
+      border: 1px solid #667eea;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background 0.2s;
+    }
+    .btn-check:hover { background: #e0e8ff; }
+    .msg {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      text-align: center;
+      display: none;
+    }
+    .msg-success { background: #d4edda; color: #155724; }
+    .msg-error { background: #f8d7da; color: #721c24; }
+    .msg-info { background: #d1ecf1; color: #0c5460; }
+    .links { text-align: center; margin-top: 18px; font-size: 0.88rem; }
+    .links a { color: #667eea; text-decoration: none; }
+    .links a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>📋 申请管理员</h1>
+    <p class="subtitle">填写信息申请成为幸运转盘管理员</p>
+
+    <div class="form-group">
+      <label>用户名</label>
+      <input type="text" id="username" placeholder="请输入账号（登录时使用）">
+    </div>
+    <div class="form-group">
+      <label>密码</label>
+      <input type="password" id="password" placeholder="请设置登录密码">
+    </div>
+    <div class="form-group">
+      <label>申请理由（选填）</label>
+      <textarea id="reason" placeholder="请简述申请理由..."></textarea>
+    </div>
+    <button class="btn-submit" onclick="submitApply()">📤 提交申请</button>
+    <button class="btn-check" onclick="checkStatus()">🔍 查询申请状态</button>
+    <div class="msg" id="msg"></div>
+
+    <div class="links">
+      <a href="/admin">← 返回登录页</a>
+    </div>
+  </div>
+
+  <script>
+    function showMsg(text, type) {
+      const el = document.getElementById('msg');
+      el.className = 'msg msg-' + type;
+      el.textContent = text;
+      el.style.display = 'block';
+    }
+
+    function submitApply() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const reason = document.getElementById('reason').value.trim();
+
+      if (!username) { showMsg('❗ 请输入用户名', 'error'); return; }
+      if (!password) { showMsg('❗ 请输入密码', 'error'); return; }
+
+      fetch('/api/admin/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, reason })
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) {
+          showMsg('❌ ' + d.error, 'error');
+        } else {
+          showMsg('✅ ' + d.message + '（申请ID：' + d.applicationId + '）', 'success');
+          document.getElementById('username').value = '';
+          document.getElementById('password').value = '';
+          document.getElementById('reason').value = '';
+        }
+      })
+      .catch(() => showMsg('❌ 无法连接到服务器', 'error'));
+    }
+
+    function checkStatus() {
+      const username = document.getElementById('username').value.trim();
+      if (!username) { showMsg('❗ 请先输入用户名再查询状态', 'error'); return; }
+
+      fetch('/api/admin/apply/status?username=' + encodeURIComponent(username))
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) {
+            showMsg('❌ ' + d.error, 'error');
+          } else {
+            const icons = { none: 'ℹ️', pending: '⏳', approved: '✅', rejected: '❌' };
+            const icon = icons[d.status] || 'ℹ️';
+            showMsg(icon + ' ' + d.message, d.status === 'approved' ? 'success' : d.status === 'rejected' ? 'error' : 'info');
+          }
+        })
+        .catch(() => showMsg('❌ 无法连接到服务器', 'error'));
+    }
+  </script>
+</body>
+</html>
