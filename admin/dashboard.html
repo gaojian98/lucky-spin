@@ -124,14 +124,18 @@
   </div>
 
   <script>
-    const adminData = JSON.parse(sessionStorage.getItem('adminUser') || 'null');
-    if (!adminData) {
-      window.location.href = '/admin';
+    // 使用 localStorage 而不是 sessionStorage
+    const adminToken = localStorage.getItem('adminToken');
+    const adminUser = localStorage.getItem('adminUser');
+    
+    if (!adminToken || !adminUser) {
+      window.location.href = 'index.html';
     }
 
     function logout() {
-      sessionStorage.removeItem('adminUser');
-      window.location.href = '/admin';
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminUser');
+      window.location.href = 'index.html';
     }
 
     function loadRequests() {
@@ -232,6 +236,6 @@
     loadRequests();
     setInterval(loadRequests, 5000);
   </script>
-<script src="nav.js"></script>
+  <script src="nav.js"></script>
 </body>
 </html>
