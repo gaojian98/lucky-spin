@@ -1,12 +1,456 @@
-function spin() {
-    const pointerAngles = [337.5, 22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5];
-    const segments = 8; // total segments
-    const anglePerSegment = 360 / segments;
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>幸运转盘</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; }
+    .container { background: white; padding: 30px; border-radius: 20px; width: 92%; max-width: 480px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    h1 { text-align: center; margin-bottom: 20px; color: #333; font-size: 24px; }
 
-    // logic to calculate the actual rotation angle
-    let randomSegment = Math.floor(Math.random() * segments);
-    let rotationAngle = pointerAngles[randomSegment];
+    /* Wheel */
+    .wheel-wrapper { position: relative; width: 300px; height: 300px; margin: 0 auto 20px; }
+    .wheel-pointer { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 28px solid #e74c3c; z-index: 10; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
+    #wheelSvg {
+      width: 300px;
+      height: 300px;
+      --rotation: 0deg;
+      transform: rotate(var(--rotation));
+      transform-origin: center;
+    }
+    #wheelSvg.wheel-spinning {
+      transition: transform 3s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+      transform: rotate(var(--rotation));
+    }
 
-    // additional logic for spinning animation, etc.
-    rotateWheel(rotationAngle);
-}
+    /* User info */
+    .user-info { display: flex; justify-content: space-around; margin: 15px 0; background: #f8f9fa; border-radius: 10px; padding: 12px; }
+    .info-item { text-align: center; }
+    .info-label { font-size: 12px; color: #666; }
+    .info-value { font-size: 18px; font-weight: bold; color: #333; }
+
+    /* Buttons */
+    .btn { padding: 12px 24px; font-size: 16px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
+    .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-spin { background: linear-gradient(135deg, #f093fb, #f5576c); color: white; width: 100%; font-size: 18px; padding: 15px; margin-top: 10px; }
+    .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+    .btn-secondary { background: #f1f3f4; color: #333; }
+    .btn-recharge { background: linear-gradient(135deg, #43e97b, #38f9d7); color: #333; width: 100%; margin-top: 8px; }
+
+    #result { text-align: center; margin-top: 10px; font-size: 14px; color: #666; min-height: 20px; }
+
+    /* Top bar buttons */
+    .top-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+    .top-bar .btn { flex: 1; padding: 10px; font-size: 14px; }
+
+    /* Modal overlay */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
+    .modal.active { display: flex; }
+    .modal-box { background: white; padding: 30px; border-radius: 20px; width: 90%; max-width: 400px; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+    .modal-box h2 { margin-bottom: 20px; text-align: center; color: #333; }
+    .modal-box input, .modal-box select { width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+    .modal-close { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #666; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 15px; }
+    .modal-actions .btn { flex: 1; }
+
+    /* Reward modal */
+    #rewardModal .modal-box { text-align: center; }
+    .reward-icon { font-size: 60px; margin: 10px 0; }
+    .reward-name { font-size: 24px; font-weight: bold; color: #333; margin: 10px 0; }
+    .rarity-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 13px; font-weight: bold; margin: 8px 0; }
+    .rarity-legendary { background: #fff3cd; color: #856404; }
+    .rarity-epic { background: #f8d7da; color: #721c24; }
+    .rarity-rare { background: #d1ecf1; color: #0c5460; }
+    .rarity-common { background: #d4edda; color: #155724; }
+    .rarity-none { background: #f1f3f4; color: #666; }
+    .reward-value { font-size: 16px; color: #666; margin: 8px 0 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎡 幸运转盘</h1>
+
+    <div class="top-bar">
+      <button class="btn btn-primary" onclick="showLogin()">🔑 登录</button>
+      <button class="btn btn-secondary" onclick="showRegister()">📝 注册</button>
+    </div>
+
+    <div class="wheel-wrapper">
+      <div class="wheel-pointer"></div>
+      <svg id="wheelSvg" viewBox="0 0 300 300">
+        <!-- Segment 0 (clockwise from top): 1K积分 – REWARDS segment=7, targetAngle=22.5° -->
+        <path d="M 150,150 L 150.00,20.00 A 130,130 0 0,1 241.92,58.08 Z" fill="#ff6b6b" stroke="white" stroke-width="2"/>
+        <text x="186.35" y="62.23" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="white" font-weight="bold" transform="rotate(22.5,186.35,62.23)">🎟️</text>
+        <text x="186.35" y="76.23" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="white" font-weight="bold" transform="rotate(22.5,186.35,76.23)">1K积分</text>
+
+        <!-- Segment 1 (clockwise): 10K积分 – REWARDS segment=6, targetAngle=67.5° -->
+        <path d="M 150,150 L 241.92,58.08 A 130,130 0 0,1 280.00,150.00 Z" fill="#ffd32a" stroke="white" stroke-width="2"/>
+        <text x="237.77" y="113.65" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="white" font-weight="bold" transform="rotate(67.5,237.77,113.65)">🎫</text>
+        <text x="237.77" y="127.65" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="white" font-weight="bold" transform="rotate(67.5,237.77,127.65)">10K积分</text>
+
+        <!-- Segment 2 (clockwise): 50K积分 – REWARDS segment=5, targetAngle=112.5° -->
+        <path d="M 150,150 L 280.00,150.00 A 130,130 0 0,1 241.92,241.92 Z" fill="#0be881" stroke="white" stroke-width="2"/>
+        <text x="237.77" y="186.35" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="white" font-weight="bold" transform="rotate(112.5,237.77,186.35)">✨</text>
+        <text x="237.77" y="200.35" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="white" font-weight="bold" transform="rotate(112.5,237.77,200.35)">50K积分</text>
+
+        <!-- Segment 3 (clockwise): 200K积分 – REWARDS segment=4, targetAngle=157.5° -->
+        <path d="M 150,150 L 241.92,241.92 A 130,130 0 0,1 150.00,280.00 Z" fill="#4bcffa" stroke="white" stroke-width="2"/>
+        <text x="186.35" y="237.77" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="white" font-weight="bold" transform="rotate(157.5,186.35,237.77)">⭐</text>
+        <text x="186.35" y="251.77" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="white" font-weight="bold" transform="rotate(157.5,186.35,251.77)">200K积分</text>
+
+        <!-- Segment 4 (clockwise): 50K盾 – REWARDS segment=3, targetAngle=202.5° -->
+        <path d="M 150,150 L 150.00,280.00 A 130,130 0 0,1 58.08,241.92 Z" fill="#ff6b6b" stroke="white" stroke-width="2"/>
+        <text x="113.65" y="237.77" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="white" font-weight="bold" transform="rotate(202.5,113.65,237.77)">💵</text>
+        <text x="113.65" y="251.77" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="white" font-weight="bold" transform="rotate(202.5,113.65,251.77)">50K盾</text>
+
+        <!-- Segment 5 (clockwise): 1000K盾 – REWARDS segment=2, targetAngle=247.5° -->
+        <path d="M 150,150 L 58.08,241.92 A 130,130 0 0,1 20.00,150.00 Z" fill="#ffd32a" stroke="white" stroke-width="2"/>
+        <text x="62.23" y="186.35" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="white" font-weight="bold" transform="rotate(247.5,62.23,186.35)">💰</text>
+        <text x="62.23" y="200.35" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="white" font-weight="bold" transform="rotate(247.5,62.23,200.35)">1000K盾</text>
+
+        <!-- Segment 6 (clockwise): AirPods – REWARDS segment=1, targetAngle=292.5° -->
+        <path d="M 150,150 L 20.00,150.00 A 130,130 0 0,1 58.08,58.08 Z" fill="#0be881" stroke="white" stroke-width="2"/>
+        <text x="62.23" y="113.65" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="white" font-weight="bold" transform="rotate(292.5,62.23,113.65)">🎧</text>
+        <text x="62.23" y="127.65" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="white" font-weight="bold" transform="rotate(292.5,62.23,127.65)">AirPods</text>
+
+        <!-- Segment 7 (clockwise): iPhone 17 – REWARDS segment=0, targetAngle=337.5° -->
+        <path d="M 150,150 L 58.08,58.08 A 130,130 0 0,1 150.00,20.00 Z" fill="#ff4fd8" stroke="white" stroke-width="2"/>
+        <text x="113.65" y="62.23" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="white" font-weight="bold" transform="rotate(337.5,113.65,62.23)">📱</text>
+        <text x="113.65" y="76.23" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="white" font-weight="bold" transform="rotate(337.5,113.65,76.23)">iPhone 17</text>
+
+        <!-- Center circle -->
+        <circle cx="150" cy="150" r="20" fill="white" stroke="#ddd" stroke-width="2"/>
+        <text x="150" y="150" text-anchor="middle" dominant-baseline="middle" font-size="16">🎯</text>
+      </svg>
+    </div>
+
+    <div class="user-info">
+      <div class="info-item">
+        <div class="info-label">积分</div>
+        <div class="info-value" id="points">0</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">现金 (VND)</div>
+        <div class="info-value" id="cash">0</div>
+      </div>
+    </div>
+
+    <button class="btn btn-spin" onclick="spin()" id="spinBtn" disabled>🎡 抽奖 (消耗 30,000 积分)</button>
+    <button class="btn btn-recharge" onclick="showRechargeModal()">💳 充值 / 提现</button>
+    <div id="result"></div>
+  </div>
+
+  <!-- Login Modal -->
+  <div class="modal" id="loginBox">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeLogin()">✕</button>
+      <h2>🔑 登录</h2>
+      <input type="text" id="login_username" placeholder="用户名">
+      <input type="password" id="login_password" placeholder="密码">
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="submitLogin()">登录</button>
+        <button class="btn btn-secondary" onclick="closeLogin()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Register Modal -->
+  <div class="modal" id="registerBox">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeRegister()">✕</button>
+      <h2>📝 注册</h2>
+      <input type="text" id="reg_username" placeholder="用户名 (至少3个字符)">
+      <input type="password" id="reg_password" placeholder="密码">
+      <input type="text" id="reg_phone" placeholder="手机号">
+      <input type="text" id="reg_bank" placeholder="银行卡号">
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="submitRegister()">注册</button>
+        <button class="btn btn-secondary" onclick="closeRegister()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reward Modal -->
+  <div class="modal" id="rewardModal">
+    <div class="modal-box">
+      <div class="reward-icon" id="rewardIcon">🎁</div>
+      <div class="reward-name" id="rewardName"></div>
+      <div class="rarity-badge" id="rarityBadge"></div>
+      <div class="reward-value" id="rewardValue"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="closeRewardModal()">🎉 领取奖励</button>
+    </div>
+  </div>
+
+  <!-- Recharge Modal -->
+  <div class="modal" id="rechargeModal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeRechargeModal()">✕</button>
+      <h2>💳 充值 / 提现</h2>
+      <p style="font-size:13px;color:#666;margin-bottom:10px;">充值金额 (积分)</p>
+      <input type="number" id="rechargeAmount" placeholder="最少 10,000 积分">
+      <select id="rechargeMethod">
+        <option value="">-- 选择充值方式 --</option>
+        <option value="momo">📱 MoMo</option>
+        <option value="bank">🏦 银行转账</option>
+        <option value="zalo">💬 Zalo Pay</option>
+        <option value="account_cash">💵 账户现金</option>
+      </select>
+      <p style="font-size:13px;color:#666;margin:10px 0 5px;">提现金额 (越南盾)</p>
+      <input type="number" id="withdrawAmount" placeholder="最少 100,000 越南盾">
+      <select id="withdrawMethod">
+        <option value="">-- 选择提现方式 --</option>
+        <option value="momo">📱 MoMo</option>
+        <option value="bank">🏦 银行转账</option>
+        <option value="zalo">💬 Zalo Pay</option>
+      </select>
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="submitRecharge()">提交</button>
+        <button class="btn btn-secondary" onclick="closeRechargeModal()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = "http://localhost:3000";
+    let currentUser = null;
+    let isSpinning = false;
+    let currentRotation = 0;
+
+    function playAudio(src, volume) {
+      try {
+        const audio = new Audio(src);
+        audio.volume = volume;
+        audio.play().catch(() => {});
+      } catch (e) {}
+    }
+
+    function showLogin() { document.getElementById("loginBox").classList.add("active"); }
+    function closeLogin() { document.getElementById("loginBox").classList.remove("active"); }
+
+    function submitLogin() {
+      const username = document.getElementById("login_username").value.trim();
+      const password = document.getElementById("login_password").value.trim();
+      if (!username) { alert("❗ 请输入用户名"); return; }
+      fetch(API + "/register", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({userId: username, password: password || "default", phone: "0", bank: "0"})
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) { alert("❌ " + d.error); }
+        else {
+          currentUser = username;
+          updateUI(d);
+          closeLogin();
+          document.getElementById("login_username").value = "";
+          document.getElementById("login_password").value = "";
+          alert("✅ 登录成功！");
+        }
+      })
+      .catch(e => { console.error(e); alert("❌ 网络连接失败"); });
+    }
+
+    function showRegister() { document.getElementById("registerBox").classList.add("active"); }
+    function closeRegister() { document.getElementById("registerBox").classList.remove("active"); }
+
+    function submitRegister() {
+      const username = document.getElementById("reg_username").value.trim();
+      const password = document.getElementById("reg_password").value.trim();
+      const phone = document.getElementById("reg_phone").value.trim();
+      const bank = document.getElementById("reg_bank").value.trim();
+      if (!username || !password || !phone || !bank) { alert("❗ 请填写完整信息"); return; }
+      if (username.length < 3) { alert("❗ 用户名至少3个字符"); return; }
+      fetch(API + "/register", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({userId: username, password, phone, bank})
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) { alert("❌ " + d.error); }
+        else {
+          currentUser = username;
+          updateUI(d);
+          closeRegister();
+          document.getElementById("reg_username").value = "";
+          document.getElementById("reg_password").value = "";
+          document.getElementById("reg_phone").value = "";
+          document.getElementById("reg_bank").value = "";
+          document.getElementById("spinBtn").disabled = false;
+          alert("✅ 注册成功！送你 100,000 积分");
+        }
+      })
+      .catch(e => { console.error(e); alert("❌ 注册失败"); });
+    }
+
+    function updateUI(userData) {
+      const points = userData.points || 0;
+      const cash = userData.cash || 0;
+      document.getElementById("points").innerText = points.toLocaleString();
+      document.getElementById("cash").innerText = cash.toLocaleString();
+      document.getElementById("spinBtn").disabled = points < 30000;
+    }
+
+    function spin() {
+      if (!currentUser) { alert("❗ 请先登录"); return; }
+      if (isSpinning) { alert("⏳ 转盘正在转动"); return; }
+
+      isSpinning = true;
+      document.getElementById("spinBtn").disabled = true;
+      const svg = document.getElementById("wheelSvg");
+
+      playAudio("data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==", 0.3);
+
+      // Step 1: Call backend immediately to get the prize
+      fetch(API + "/spin", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({userId: currentUser})
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) {
+          document.getElementById("result").innerText = "❌ " + d.error;
+          isSpinning = false;
+          document.getElementById("spinBtn").disabled = false;
+          return;
+        }
+
+        // Step 2: Calculate target angle based on reward.segment.
+        // 337.5° is the center angle of segment 0 (iPhone 17) when the wheel is at 0°.
+        // Each subsequent segment is 45° counter-clockwise, so:
+        //   targetAngle = 337.5 - segment * 45
+        // After rotating the wheel clockwise by targetAngle degrees, the pointer (top)
+        // aligns with the center of the winning segment.
+        const targetAngle = 337.5 - d.reward.segment * 45;
+        const currentNormalized = ((currentRotation % 360) + 360) % 360;
+        // Always rotate clockwise: ensure delta is positive (0–360°)
+        let delta = targetAngle - currentNormalized;
+        if (delta < 0) delta += 360;
+
+        // Step 3: Rotate at least 1800° (5 full turns) plus the delta to reach target
+        currentRotation += 1800 + delta;
+
+        // Step 4: Trigger the CSS spin animation.
+        // Remove the transition class and force a browser reflow (via getBoundingClientRect)
+        // so the browser registers the transition removal before we re-add it.
+        svg.style.transition = 'none';
+        svg.classList.remove('wheel-spinning');
+        void svg.getBoundingClientRect(); // forces reflow — do not remove
+        svg.style.setProperty('--rotation', currentRotation + 'deg');
+        svg.classList.add('wheel-spinning');
+
+        // Step 5: After 3s animation completes, show the result
+        setTimeout(() => {
+          svg.classList.remove('wheel-spinning');
+          updateUI(d.user);
+          playAudio("data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==", 0.5);
+          showRewardModal(d.reward);
+          isSpinning = false;
+          document.getElementById("spinBtn").disabled = d.user.points < 30000;
+        }, 3000);
+      })
+      .catch(e => {
+        console.error(e);
+        alert("❌ 抽奖失败");
+        isSpinning = false;
+        document.getElementById("spinBtn").disabled = false;
+      });
+    }
+
+    function showRewardModal(reward) {
+      const rarityTexts = {
+        legendary: "🌟 传说级 - 超级大奖！",
+        epic: "🔥 史诗级 - 高级奖品",
+        rare: "💎 稀有级 - 优质奖品",
+        common: "📦 普通级 - 奖品获得",
+        none: "😢 未中奖 - 再试一次"
+      };
+      document.getElementById("rewardIcon").innerText = reward.icon;
+      document.getElementById("rewardName").innerText = reward.name;
+      document.getElementById("rarityBadge").innerText = rarityTexts[reward.rarity] || reward.rarity;
+      document.getElementById("rarityBadge").className = "rarity-badge rarity-" + reward.rarity;
+      let valueText = "";
+      if (reward.type === "cash") { valueText = "获得 " + reward.value.toLocaleString() + " 越南盾"; }
+      else if (reward.type === "points") { valueText = "获得 " + reward.value.toLocaleString() + " 积分"; }
+      else if (reward.type === "iphone") { valueText = "恭喜！你赢得了 iPhone 17！"; }
+      else if (reward.type === "airpods") { valueText = "恭喜！你赢得了 AirPods！"; }
+      else { valueText = "下次会更幸运哦 😊"; }
+      document.getElementById("rewardValue").innerText = valueText;
+      document.getElementById("rewardModal").classList.add("active");
+    }
+
+    function closeRewardModal() { document.getElementById("rewardModal").classList.remove("active"); }
+
+    function showRechargeModal() {
+      if (!currentUser) { alert("❗ 请先登录"); return; }
+      document.getElementById("rechargeModal").classList.add("active");
+    }
+    function closeRechargeModal() { document.getElementById("rechargeModal").classList.remove("active"); }
+
+    function submitRecharge() {
+      const rechargeAmount = parseInt(document.getElementById("rechargeAmount").value) || 0;
+      const rechargeMethod = document.getElementById("rechargeMethod").value;
+      const withdrawAmount = parseInt(document.getElementById("withdrawAmount").value) || 0;
+      const withdrawMethod = document.getElementById("withdrawMethod").value;
+      const hasRecharge = rechargeAmount > 0 && rechargeMethod;
+      const hasWithdraw = withdrawAmount > 0 && withdrawMethod;
+      if (!hasRecharge && !hasWithdraw) { alert("❗ 请填写充值或提现信息"); return; }
+      if (hasRecharge) {
+        if (rechargeAmount < 10000) { alert("❗ 充值最少 10,000 积分"); return; }
+        if (!rechargeMethod) { alert("❗ 请选择充值方式"); return; }
+        if (rechargeMethod === "account_cash") {
+          fetch(API + "/recharge/account_cash", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({userId: currentUser, amount: rechargeAmount})
+          })
+          .then(r => r.json())
+          .then(d => {
+            if (d.error) { alert("❌ 充值失败：" + d.error); }
+            else {
+              alert("✅ 已用账户现金充值 " + rechargeAmount + " 积分");
+              updateUI(d.user);
+              document.getElementById("rechargeAmount").value = "";
+              document.getElementById("rechargeMethod").value = "";
+            }
+          })
+          .catch(e => { console.error(e); alert("❌ 充值失败"); });
+        } else {
+          fetch(API + "/recharge/request", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({userId: currentUser, amount: rechargeAmount, method: rechargeMethod})
+          })
+          .then(r => r.json())
+          .then(d => {
+            if (d.error) { alert("❌ " + d.error); }
+            else {
+              alert("✅ 充值申请已提交！");
+              document.getElementById("rechargeAmount").value = "";
+              document.getElementById("rechargeMethod").value = "";
+            }
+          })
+          .catch(e => { console.error(e); alert("❌ 提交失败"); });
+        }
+      }
+      if (hasWithdraw) {
+        if (withdrawAmount < 100000) { alert("❗ 提现最少 100,000 越南盾"); return; }
+        alert("✅ 提现申请已提交！预计 1-3 个工作日到账");
+        document.getElementById("withdrawAmount").value = "";
+        document.getElementById("withdrawMethod").value = "";
+      }
+      if (hasRecharge && !hasWithdraw) { closeRechargeModal(); }
+    }
+
+    document.getElementById("loginBox").addEventListener("click", e => { if (e.target.id === "loginBox") closeLogin(); });
+    document.getElementById("registerBox").addEventListener("click", e => { if (e.target.id === "registerBox") closeRegister(); });
+    document.getElementById("rewardModal").addEventListener("click", e => { if (e.target.id === "rewardModal") closeRewardModal(); });
+    document.getElementById("rechargeModal").addEventListener("click", e => { if (e.target.id === "rechargeModal") closeRechargeModal(); });
+  </script>
+</body>
+</html>
