@@ -1,24 +1,7 @@
 // 检查权限 - 只在非登录页执行
 function checkAdminAuth() {
-    const currentPage = window.location.pathname.split('/').pop();
     const token = localStorage.getItem('adminToken');
-    
-    console.log('🔍 权限检查:');
-    console.log('  当前页面:', currentPage);
-    console.log('  Token:', token ? '✅ 存在' : '❌ 不存在');
-    
-    // 登录页不需要检查
-    if (currentPage === 'index.html' || currentPage === '' || currentPage === 'admin/') {
-        console.log('  → 登录页，跳过检查');
-        return;
-    }
-    
-    if (!token) {
-        console.log('  → 无 Token，重定向到登录页');
-        window.location.href = 'index.html';
-    } else {
-        console.log('  → ✅ 权限验证通过');
-    }
+    console.log('🔍 权限检查: Token', token ? '✅ 存在' : '❌ 不存在');
 }
 
 // 创建统一导航菜单
@@ -119,17 +102,12 @@ function createNavigation() {
 
 function setCurrentPageActive() {
     const currentPage = window.location.pathname.split('/').pop() || 'dashboard.html';
-    console.log('当前页面:', currentPage);
     
     document.querySelectorAll('.nav-menu a').forEach(a => {
         const href = a.getAttribute('href');
-        // 移除之前的 active 标记
         a.classList.remove('active');
-        
-        // 添加新的 active 标记
         if (href === currentPage) {
             a.classList.add('active');
-            console.log('✅ 激活导航:', href);
         }
     });
 }
@@ -142,13 +120,12 @@ function logoutAdmin() {
     }
 }
 
-// 页面加载完后执行权限检查
+// 页面加载完后创建导航
 document.addEventListener('DOMContentLoaded', () => {
     const currentPage = window.location.pathname.split('/').pop();
     
-    // 登录页不加载导航
+    // 非登录页才加载导航
     if (currentPage !== 'index.html' && currentPage !== '') {
-        checkAdminAuth();
         createNavigation();
     }
 });
