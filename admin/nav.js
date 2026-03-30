@@ -119,11 +119,18 @@ function createNavigation() {
 }
 
 function setCurrentPageActive() {
-    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    const currentPage = window.location.pathname.split('/').pop() || 'dashboard.html';
+    console.log('当前页面:', currentPage);
+    
     document.querySelectorAll('.nav-menu a').forEach(a => {
-        if (a.getAttribute('href') === currentPage || 
-            (currentPage === '' && a.getAttribute('href') === 'index.html')) {
+        const href = a.getAttribute('href');
+        // 移除之前的 active 标记
+        a.classList.remove('active');
+        
+        // 添加新的 active 标记
+        if (href === currentPage) {
             a.classList.add('active');
+            console.log('✅ 激活导航:', href);
         }
     });
 }
