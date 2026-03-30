@@ -245,7 +245,7 @@ app.post("/recharge/account_cash", (req, res) => {
   const user = users[userId];
   if (!amount || amount < 10000) return res.json({ error: "最低充值 10,000 积分" });
   
-  const requiredCash = Math.ceil(amount / 100);
+  const requiredCash = Math.ceil(amount / 1);
   if (user.cash < requiredCash) return res.json({ error: "账户现金不足。需要 " + requiredCash + " 越南盾，实际有 " + user.cash + " 越南盾" });
   
   user.cash -= requiredCash;
