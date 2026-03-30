@@ -99,13 +99,13 @@
   </div>
 
   <script>
-    const adminData = JSON.parse(sessionStorage.getItem('adminUser') || 'null');
+    const adminData = JSON.parse(localStorage.getItem('adminUser') || 'null');
     if (!adminData) {
       window.location.href = '/admin';
     }
 
     function logout() {
-      sessionStorage.removeItem('adminUser');
+      localStorage.removeItem('adminUser');
       window.location.href = '/admin';
     }
 
