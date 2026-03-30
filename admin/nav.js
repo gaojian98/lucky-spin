@@ -101,7 +101,6 @@ function createNavigation() {
         <div class="nav-container">
             <a href="dashboard.html" class="nav-brand">🎉 Lucky Spin</a>
             <ul class="nav-menu">
-                <li><a href="dashboard.html">📊 首页</a></li>
                 <li><a href="users.html">👥 用户</a></li>
                 <li><a href="managers.html">👨‍💼 审核</a></li>
                 <li><a href="config.html">⚙️ 配置</a></li>
