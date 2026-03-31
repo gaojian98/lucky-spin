@@ -70,7 +70,9 @@ app.post("/register", (req, res) => {
       username: userId,
       points: users[userId].points,
       cash: users[userId].cash,
-      spinCount: users[userId].spinCount
+      spinCount: users[userId].spinCount,
+      totalWinnings: users[userId].totalWinnings || 0,
+      prizes: users[userId].prizes || []
     });
   }
   users[userId] = {
@@ -88,7 +90,9 @@ app.post("/register", (req, res) => {
     username: userId,
     points: users[userId].points,
     cash: users[userId].cash,
-    spinCount: users[userId].spinCount
+    spinCount: users[userId].spinCount,
+    totalWinnings: users[userId].totalWinnings,
+    prizes: users[userId].prizes
   });
 });
 
