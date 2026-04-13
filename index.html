@@ -21,7 +21,7 @@
     #wheelSvg { width: 100%; height: 100%; filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.2)); }
     
     .wheel-spinning {
-      animation: spinWheel 3s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+      animation: spinWheel 1.5s cubic-bezier(0.33, 1, 0.68, 1) forwards;
     }
     
     @keyframes spinWheel {
@@ -70,8 +70,26 @@
     .rarity-common { background: rgba(58, 134, 255, 0.9); color: white; }
     .reward-value { font-size: 26px; margin: 15px 0; font-weight: 600; }
     
-    @media (max-width: 1200px) { .main-layout { flex-direction: column; align-items: center; } .wheel-container { width: 380px; height: 380px; } .left-section, .center-section, .right-section { flex: 1; width: 100%; max-width: 400px; } }
-    @media (max-width: 600px) { .container { padding: 20px; } h1 { font-size: 28px; } .wheel-container { width: 280px; height: 280px; } .pointer { font-size: 30px; } }
+    @media (max-width: 1200px) {
+      .main-layout { flex-direction: column; align-items: center; }
+      .wheel-container { width: 380px; height: 380px; }
+      .left-section, .center-section, .right-section { flex: 1; width: 100%; max-width: 500px; }
+    }
+    @media (max-width: 600px) {
+      body { padding: 10px; align-items: flex-start; }
+      .container { padding: 16px; border-radius: 12px; }
+      h1 { font-size: 24px; margin-bottom: 20px; }
+      .main-layout { flex-direction: column; align-items: center; gap: 16px; }
+      .left-section, .center-section, .right-section { flex: none; width: 100%; max-width: 100%; }
+      .wheel-container { width: min(280px, 85vw); height: min(280px, 85vw); }
+      .pointer { font-size: 28px; }
+      .rule-box { padding: 16px; }
+      .rule-box h3 { font-size: 16px; margin-bottom: 12px; }
+      .rule-box p { font-size: 13px; }
+      button { font-size: 15px; padding: 13px 16px; }
+      .info-value { font-size: 26px; }
+      #result { font-size: 16px; }
+    }
   </style>
 </head>
 <body>
